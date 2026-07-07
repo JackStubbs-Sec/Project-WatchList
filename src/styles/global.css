@@ -58,7 +58,7 @@ a:focus-visible {
 main {
   padding-top: max(var(--space-4), env(safe-area-inset-top));
   padding-right: max(var(--space-5), env(safe-area-inset-right));
-  padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-2));
+  padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom));
   padding-left: max(var(--space-5), env(safe-area-inset-left));
   display: grid;
   gap: var(--space-5);
