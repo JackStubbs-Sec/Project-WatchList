@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="WatchList icon">
+  <rect x="0" y="0" width="180" height="180" rx="42" fill="#0d1117" />
+  <circle cx="90" cy="90" r="58" fill="#141923" />
+  <path d="M48 60h56c24 0 38 14 38 33 0 19-13 32-35 36l-28 5 40 20v18l-69-36v-17l54-9c12-2 19-8 19-16 0-9-7-15-20-15H48z" fill="#57e3af"/>
+</svg>
