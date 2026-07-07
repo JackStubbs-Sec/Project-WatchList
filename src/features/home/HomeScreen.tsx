@@ -152,16 +152,22 @@ export function HomeScreen() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px" }}>
             {recentlyAdded.map((entry) => (
               <Link key={entry.id} to={`/library/${entry.id}`} style={recentlyAddedCardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                  <MediaLogo type={entry.type} size="medium" tone={tileToneByIndex(entry.id)} />
-                  {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
+                <div style={recentlyAddedTopStyle}>
+                  <div style={recentlyAddedMediaWrapStyle}>
+                    <MediaLogo type={entry.type} size="small" tone={tileToneByIndex(entry.id)} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
+                  </div>
                 </div>
-                <div style={{ display: "grid", gap: "4px" }}>
-                  <p style={{ color: "var(--text-strong)", fontSize: "1rem", fontWeight: 720, lineHeight: 1.2 }}>{entry.title}</p>
-                  <p style={{ color: "var(--muted)", fontSize: "0.82rem", fontWeight: 650 }}>
-                    {entry.type === "series" ? "TV Series" : "Movie"}
-                  </p>
-                  {entry.platform ? <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{platformLabel(entry.platform)}</p> : null}
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <div style={{ minHeight: "2.6em" }}>
+                    <p style={recentlyAddedTitleStyle}>{entry.title}</p>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                    <span style={recentlyAddedTypePillStyle}>{entry.type === "series" ? "TV" : "Film"}</span>
+                    <span style={{ color: "var(--muted)", fontSize: "1rem", lineHeight: 1 }}>›</span>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -232,13 +238,56 @@ const wideCardStyle: CSSProperties = {
 
 const recentlyAddedCardStyle: CSSProperties = {
   display: "grid",
-  gap: "12px",
-  borderRadius: "16px",
+  gap: "14px",
+  borderRadius: "18px",
   border: "1px solid var(--card-border)",
-  background: "var(--card-bg)",
-  padding: "12px",
-  minHeight: "168px",
+  background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 88%, transparent), var(--card-bg))",
+  padding: "14px",
+  minHeight: "176px",
   alignContent: "space-between"
+};
+
+const recentlyAddedTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto",
+  alignItems: "start",
+  gap: "10px"
+};
+
+const recentlyAddedMediaWrapStyle: CSSProperties = {
+  width: "82px",
+  height: "82px",
+  borderRadius: "18px",
+  display: "grid",
+  placeItems: "center",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
+  border: "1px solid var(--card-border)"
+};
+
+const recentlyAddedTitleStyle: CSSProperties = {
+  color: "var(--text-strong)",
+  fontSize: "1rem",
+  fontWeight: 760,
+  lineHeight: 1.3,
+  display: "-webkit-box",
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden"
+};
+
+const recentlyAddedTypePillStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "28px",
+  padding: "0 10px",
+  borderRadius: "999px",
+  background: "var(--input-bg)",
+  border: "1px solid var(--input-border)",
+  color: "var(--muted)",
+  fontSize: "0.78rem",
+  fontWeight: 700,
+  letterSpacing: "0.02em"
 };
 
 const recentlyAddedEmptyPlatformStyle: CSSProperties = {
