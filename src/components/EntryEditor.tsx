@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,6 +45,40 @@ interface EntryEditorProps {
   onSubmit: (value: EntryEditorValue) => Promise<void>;
 }
 
+function toOptionalPositiveInt(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const rounded = Math.trunc(value);
+  return rounded >= 1 ? rounded : undefined;
+}
+
+function toOptionalRating(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return value >= 0.5 && value <= 5 ? value : undefined;
+}
+
+function normalizeEntryInitial(initial?: Partial<WatchEntry>): EntryEditorData {
+  const type = initial?.type === "series" ? "series" : "movie";
+  const statusValues: WatchStatus[] = ["watchlist", "watching", "completed", "dropped"];
+  const status = statusValues.includes(initial?.status as WatchStatus) ? (initial?.status as WatchStatus) : "watchlist";
+  const seriesLength = initial?.seriesLength === "short" || initial?.seriesLength === "long" ? initial.seriesLength : undefined;
+
+  return {
+    title: typeof initial?.title === "string" ? initial.title : "",
+    type,
+    status,
+    genre: typeof initial?.genre === "string" ? initial.genre : "",
+    totalSeasons: toOptionalPositiveInt(initial?.totalSeasons),
+    season: toOptionalPositiveInt(initial?.season),
+    episode: toOptionalPositiveInt(initial?.episode),
+    favorite: Boolean(initial?.isFavorite),
+    recommended: Boolean(initial?.isRecommended),
+    rating: toOptionalRating(initial?.rating),
+    review: typeof initial?.review === "string" ? initial.review : "",
+    notes: typeof initial?.notes === "string" ? initial.notes : "",
+    seriesLength: type === "series" ? seriesLength : undefined
+  };
+}
+
 function toNumberOrUndefined(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const parsed = Number(value);
@@ -52,6 +86,8 @@ function toNumberOrUndefined(value: string): number | undefined {
 }
 
 export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps) {
+  const defaultValues = useMemo(() => normalizeEntryInitial(initial), [initial]);
+
   const {
     register,
     handleSubmit,
@@ -60,21 +96,7 @@ export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps
     formState: { errors, isSubmitting }
   } = useForm<EntryEditorData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      title: initial?.title ?? "",
-      type: initial?.type ?? "movie",
-      status: initial?.status ?? "watchlist",
-      genre: initial?.genre ?? "",
-      totalSeasons: initial?.totalSeasons,
-      season: initial?.season,
-      episode: initial?.episode,
-      favorite: initial?.isFavorite ?? false,
-      recommended: initial?.isRecommended ?? false,
-      rating: initial?.rating,
-      review: initial?.review ?? "",
-      notes: initial?.notes ?? "",
-      seriesLength: initial?.seriesLength
-    }
+    defaultValues
   });
 
   const type = watch("type");
