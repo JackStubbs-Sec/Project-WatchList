@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWatchStore } from "../../store/useWatchStore";
-import { MediaLogo, ShuffleLogo } from "../../components/icons";
+import { MediaLogo, PlatformLogo, ShuffleLogo, platformLabel } from "../../components/icons";
 
 function greetingByHour(date: Date) {
   const hour = date.getHours();
@@ -93,6 +93,12 @@ export function HomeScreen() {
             <MediaLogo type={continueWatching.type} size="large" tone="purple" />
             <div style={{ flex: 1 }}>
               <p style={{ fontWeight: 750, fontSize: "1.05rem", marginBottom: "2px" }}>{continueWatching.title}</p>
+              {continueWatching.platform ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <PlatformLogo platform={continueWatching.platform} compact />
+                  <span style={{ color: "var(--text-strong)", fontSize: "0.84rem", fontWeight: 650 }}>{platformLabel(continueWatching.platform)}</span>
+                </div>
+              ) : null}
               <p style={{ color: "var(--muted)", marginBottom: "6px" }}>
                 {continueWatching.type === "series" ? "TV Series" : "Movie"}
                 {continueWatching.type === "series" && continueWatching.season
@@ -147,6 +153,11 @@ export function HomeScreen() {
             {recentlyAdded.map((entry) => (
               <Link key={entry.id} to={`/library/${entry.id}`} style={miniCardStyle}>
                 <MediaLogo type={entry.type} size="small" tone={tileToneByIndex(entry.id)} />
+                {entry.platform ? (
+                  <div style={{ marginTop: "8px", display: "flex", justifyContent: "flex-start" }}>
+                    <PlatformLogo platform={entry.platform} compact />
+                  </div>
+                ) : null}
                 <p style={{ marginTop: "8px", fontSize: "0.94rem", fontWeight: 640, lineHeight: 1.2 }}>{entry.title}</p>
                 <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: "2px" }}>{entry.type === "series" ? "TV Series" : "Movie"}</p>
               </Link>
@@ -170,6 +181,12 @@ export function HomeScreen() {
                   <MediaLogo type={entry.type} size="medium" tone={entry.type === "series" ? "green" : "blue"} />
                   <div>
                     <p style={{ fontWeight: 700 }}>{entry.title}</p>
+                    {entry.platform ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                        <PlatformLogo platform={entry.platform} compact />
+                        <span style={{ color: "var(--text-strong)", fontSize: "0.84rem", fontWeight: 650 }}>{platformLabel(entry.platform)}</span>
+                      </div>
+                    ) : null}
                     <p style={{ color: "#0a84ff", marginTop: "2px" }}>{ratingToStars(entry.rating)}</p>
                     <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "2px" }}>{timeAgo(entry.lastWatchedAt ?? entry.updatedAt)}</p>
                   </div>

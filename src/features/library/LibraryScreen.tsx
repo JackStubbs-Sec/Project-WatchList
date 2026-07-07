@@ -21,6 +21,12 @@ export function LibraryScreen() {
   const [segment, setSegment] = useState<Segment>("all");
   const [genre, setGenre] = useState("");
   const [platform, setPlatform] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<WatchStatus, boolean>>({
+    watchlist: false,
+    watching: false,
+    completed: false,
+    dropped: false
+  });
 
   const genreOptions = useMemo(() => {
     const values = new Set<string>();
@@ -120,7 +126,7 @@ export function LibraryScreen() {
         const meta = statusMeta[group.status];
         return (
           <section key={group.status} className="card" style={{ padding: "14px" }}>
-            <div className="row">
+            <button type="button" onClick={() => setCollapsed((state) => ({ ...state, [group.status]: !state[group.status] }))} style={sectionToggleStyle}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <span
                   style={{
@@ -143,9 +149,12 @@ export function LibraryScreen() {
                   </p>
                 </div>
               </div>
-              <span style={{ color: "var(--muted)", fontSize: "0.82rem", fontWeight: 650 }}>Top matches</span>
-            </div>
-            {group.items.length ? (
+              <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "0.82rem", fontWeight: 650 }}>
+                <span>{collapsed[group.status] ? "Show" : "Hide"}</span>
+                <span style={{ fontSize: "1rem", lineHeight: 1 }}>{collapsed[group.status] ? "▾" : "▴"}</span>
+              </span>
+            </button>
+            {!collapsed[group.status] && group.items.length ? (
               <div style={{ marginTop: "10px", borderTop: "1px solid var(--divider)", paddingTop: "10px", display: "grid", gap: "10px" }}>
                 {group.items.map((entry) => (
                   <Link
@@ -201,4 +210,17 @@ const emptyPlatformStyle: React.CSSProperties = {
   placeItems: "center",
   fontSize: "0.85rem",
   fontWeight: 700
+};
+
+const sectionToggleStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "10px",
+  textAlign: "left",
+  minHeight: "unset"
 };
