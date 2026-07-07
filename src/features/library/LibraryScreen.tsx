@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { PlatformLogo, platformLabel } from "../../components/icons";
 import { useWatchStore } from "../../store/useWatchStore";
 import type { WatchStatus } from "../../types/watch";
 
@@ -106,7 +107,14 @@ export function LibraryScreen() {
                 {group.items.slice(0, 2).map((entry) => (
                   <p key={entry.id} style={{ color: "var(--muted)", fontSize: "0.83rem" }}>
                     <Link to={`/library/${entry.id}`}>{entry.title}</Link>
+                    {` • ${entry.type === "series" ? "TV Series" : "Movie"}`}
                     {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}
+                    {entry.platform ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginLeft: "8px", color: "var(--text-strong)" }}>
+                        <PlatformLogo platform={entry.platform} compact />
+                        <span>{platformLabel(entry.platform)}</span>
+                      </span>
+                    ) : null}
                   </p>
                 ))}
               </div>
