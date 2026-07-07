@@ -162,9 +162,9 @@ export function LibraryScreen() {
                     to={`/library/${entry.id}`}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "auto auto 1fr auto",
+                      gridTemplateColumns: "40px 30px minmax(0, 1fr) 14px",
                       alignItems: "center",
-                      gap: "10px",
+                      gap: "8px",
                       padding: "8px 2px",
                       width: "100%",
                       maxWidth: "100%",
@@ -172,14 +172,26 @@ export function LibraryScreen() {
                     }}
                   >
                     <span style={libraryMediaIconWrapStyle}>
-                      <MediaLogo type={entry.type} size="small" tone={entry.type === "series" ? "purple" : "red"} />
+                      <MediaLogo type={entry.type} size="compact" tone={entry.type === "series" ? "purple" : "red"} />
                     </span>
                     {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={emptyPlatformStyle}>?</span>}
                     <span style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
                       <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.96rem", fontWeight: 720, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {entry.title}
                       </span>
-                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.8rem", marginTop: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span
+                        style={{
+                          display: "-webkit-box",
+                          color: "var(--muted)",
+                          fontSize: "0.8rem",
+                          marginTop: "3px",
+                          overflow: "hidden",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          lineHeight: 1.25,
+                          overflowWrap: "anywhere"
+                        }}
+                      >
                         {entry.type === "series" ? "TV Series" : "Movie"}
                         {entry.genre.trim() ? ` • ${entry.genre.trim()}` : ""}
                         {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}
@@ -218,8 +230,8 @@ const emptyPlatformStyle: React.CSSProperties = {
 };
 
 const libraryMediaIconWrapStyle: React.CSSProperties = {
-  width: "52px",
-  height: "52px",
+  width: "40px",
+  height: "40px",
   display: "grid",
   placeItems: "center",
   flexShrink: 0

@@ -2,11 +2,13 @@ import type { StreamingPlatform, WatchType } from "../types/watch";
 
 type Tone = "red" | "green" | "blue" | "purple";
 
-type LogoSize = "small" | "medium" | "large";
+type LogoSize = "compact" | "small" | "medium" | "large";
 
 export function MediaLogo({ type, size, tone }: { type: WatchType; size: LogoSize; tone: Tone }) {
   const box =
-    size === "small"
+    size === "compact"
+      ? { width: 40, height: 40, radius: 11, icon: 16, stroke: 1.6 }
+      : size === "small"
       ? { width: 66, height: 66, radius: 14, icon: 26, stroke: 1.8 }
       : size === "medium"
         ? { width: 52, height: 52, radius: 12, icon: 20, stroke: 1.8 }
