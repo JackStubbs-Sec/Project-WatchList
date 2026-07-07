@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EntryEditor } from "../../components/EntryEditor";
-import { MediaLogo } from "../../components/icons";
+import { MediaLogo, PlatformLogo, platformLabel } from "../../components/icons";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
 
@@ -99,6 +99,12 @@ export function DetailScreen() {
             <MediaLogo type={entry.type} size="large" tone={entry.type === "series" ? "purple" : "red"} />
             <h1 style={{ fontSize: "3rem", lineHeight: 1.1, margin: 0 }}>{entry.title}</h1>
             <p style={{ color: "var(--muted)", fontSize: "1.15rem" }}>{entry.type === "movie" ? "Movie" : "TV Series"}</p>
+            {entry.platform ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
+                <PlatformLogo platform={entry.platform} compact />
+                <span style={{ color: "var(--text-strong)", fontWeight: 650 }}>{platformLabel(entry.platform)}</span>
+              </div>
+            ) : null}
           </section>
 
           <section style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>

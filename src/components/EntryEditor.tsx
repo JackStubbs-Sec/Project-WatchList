@@ -2,13 +2,15 @@ import { useMemo, type CSSProperties } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { SeriesLength, WatchEntry, WatchStatus, WatchType } from "../types/watch";
+import { PlatformLogo, platformLabel } from "./icons";
+import { streamingPlatforms, type SeriesLength, type StreamingPlatform, type WatchEntry, type WatchStatus, type WatchType } from "../types/watch";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   type: z.enum(["movie", "series"]),
   status: z.enum(["watchlist", "watching", "completed", "dropped"]),
   genre: z.string().default(""),
+  platform: z.enum(streamingPlatforms).optional(),
   totalSeasons: z.number().int().min(1).optional(),
   season: z.number().int().min(1).optional(),
   episode: z.number().int().min(1).optional(),
@@ -27,6 +29,7 @@ export interface EntryEditorValue {
   type: WatchType;
   status: WatchStatus;
   genre: string;
+  platform?: StreamingPlatform;
   totalSeasons?: number;
   season?: number;
   episode?: number;
@@ -61,12 +64,14 @@ function normalizeEntryInitial(initial?: Partial<WatchEntry>): EntryEditorData {
   const statusValues: WatchStatus[] = ["watchlist", "watching", "completed", "dropped"];
   const status = statusValues.includes(initial?.status as WatchStatus) ? (initial?.status as WatchStatus) : "watchlist";
   const seriesLength = initial?.seriesLength === "short" || initial?.seriesLength === "long" ? initial.seriesLength : undefined;
+  const platform = streamingPlatforms.includes(initial?.platform as StreamingPlatform) ? (initial?.platform as StreamingPlatform) : undefined;
 
   return {
     title: typeof initial?.title === "string" ? initial.title : "",
     type,
     status,
     genre: typeof initial?.genre === "string" ? initial.genre : "",
+    platform,
     totalSeasons: toOptionalPositiveInt(initial?.totalSeasons),
     season: toOptionalPositiveInt(initial?.season),
     episode: toOptionalPositiveInt(initial?.episode),
@@ -101,6 +106,7 @@ export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps
 
   const type = watch("type");
   const status = watch("status");
+  const platform = watch("platform");
   const favorite = watch("favorite");
 
   return (
@@ -112,6 +118,7 @@ export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps
           type: data.type,
           status: data.status,
           genre: data.genre.trim(),
+          platform: data.platform,
           totalSeasons: isSeries ? data.totalSeasons : undefined,
           season: isSeries ? data.season : undefined,
           episode: isSeries ? data.episode : undefined,
@@ -183,6 +190,33 @@ export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps
         <span style={fieldLabelStyle}>Genre</span>
         <input {...register("genre")} placeholder="Drama, Sci-Fi, Thriller" style={inputStyle} />
       </label>
+
+      <div>
+        <div className="row" style={{ marginBottom: "6px" }}>
+          <p style={fieldLabelStyle}>Streaming Service</p>
+          {platform ? (
+            <button type="button" onClick={() => setValue("platform", undefined, { shouldDirty: true })} style={clearButtonStyle}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <div style={platformGridStyle}>
+          {streamingPlatforms.map((item) => {
+            const active = platform === item;
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setValue("platform", item, { shouldDirty: true })}
+                style={{ ...platformButtonStyle, ...(active ? platformButtonActiveStyle : {}) }}
+              >
+                <PlatformLogo platform={item} compact />
+                <span style={{ fontSize: "0.84rem", fontWeight: 650 }}>{platformLabel(item)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {type === "series" ? (
         <>
@@ -352,4 +386,36 @@ const primaryButtonStyle: CSSProperties = {
   background: "var(--accent)",
   color: "var(--text-inverse)",
   fontWeight: 700
+};
+
+const platformGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "8px"
+};
+
+const platformButtonStyle: CSSProperties = {
+  border: "1px solid var(--input-border)",
+  borderRadius: "14px",
+  background: "var(--input-bg)",
+  color: "var(--fg)",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  padding: "10px",
+  textAlign: "left"
+};
+
+const platformButtonActiveStyle: CSSProperties = {
+  borderColor: "rgba(10, 132, 255, 0.45)",
+  background: "rgba(10, 132, 255, 0.12)"
+};
+
+const clearButtonStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "var(--accent)",
+  fontWeight: 650,
+  minHeight: "unset",
+  padding: 0
 };

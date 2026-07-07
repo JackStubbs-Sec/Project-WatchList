@@ -1,4 +1,4 @@
-import type { WatchType } from "../types/watch";
+import type { StreamingPlatform, WatchType } from "../types/watch";
 
 type Tone = "red" | "green" | "blue" | "purple";
 
@@ -58,6 +58,49 @@ export function ShuffleLogo() {
         <path d="M16 18h5v-5" stroke="#f7c942" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M21 18l-3.9-3.9" stroke="#f7c942" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
+    </span>
+  );
+}
+
+const platformMeta: Record<StreamingPlatform, { label: string; background: string; mark: string; color?: string; letterSpacing?: string }> = {
+  netflix: { label: "Netflix", background: "linear-gradient(140deg,#161616,#000000)", mark: "N", color: "#e50914" },
+  prime: { label: "Amazon Prime", background: "linear-gradient(140deg,#11375d,#0b2037)", mark: "prime", color: "#7fd6ff", letterSpacing: "0.02em" },
+  nowtv: { label: "NowTV", background: "linear-gradient(140deg,#7b1cff,#35008f)", mark: "NOW", color: "#ffffff" },
+  appletv: { label: "AppleTV", background: "linear-gradient(140deg,#2a2a2a,#090909)", mark: "tv+", color: "#ffffff" },
+  paramount: { label: "Paramount Plus", background: "linear-gradient(140deg,#1f63ff,#0e2c8b)", mark: "P+", color: "#ffffff" },
+  itvx: { label: "ITVX", background: "linear-gradient(140deg,#ff5f8a,#8d2eff)", mark: "ITVX", color: "#ffffff", letterSpacing: "0.04em" },
+  channel4: { label: "Channel 4", background: "linear-gradient(140deg,#1f7f47,#0b4d27)", mark: "4", color: "#ffffff" },
+  disney: { label: "Disney+", background: "linear-gradient(140deg,#13265f,#06132f)", mark: "Disney+", color: "#ffffff" }
+};
+
+export function platformLabel(platform: StreamingPlatform) {
+  return platformMeta[platform].label;
+}
+
+export function PlatformLogo({ platform, compact = false }: { platform: StreamingPlatform; compact?: boolean }) {
+  const meta = platformMeta[platform];
+  const size = compact ? 34 : 44;
+
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: compact ? "10px" : "12px",
+        background: meta.background,
+        border: "1px solid var(--chip-border)",
+        display: "grid",
+        placeItems: "center",
+        boxShadow: "0 6px 14px rgba(0,0,0,0.18)",
+        color: meta.color ?? "#fff",
+        fontWeight: 800,
+        fontSize: compact ? "0.72rem" : "0.82rem",
+        lineHeight: 1,
+        letterSpacing: meta.letterSpacing ?? "0"
+      }}
+    >
+      {meta.mark}
     </span>
   );
 }

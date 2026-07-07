@@ -4,6 +4,10 @@ export type WatchStatus = "watchlist" | "watching" | "completed" | "dropped";
 
 export type SeriesLength = "short" | "long";
 
+export const streamingPlatforms = ["netflix", "prime", "nowtv", "appletv", "paramount", "itvx", "channel4", "disney"] as const;
+
+export type StreamingPlatform = (typeof streamingPlatforms)[number];
+
 export type TonightStatusFilter = "not_watched" | "watching" | "watched" | "dropped" | "recommended" | "favourite";
 
 export interface WatchEntry {
@@ -12,6 +16,7 @@ export interface WatchEntry {
   type: WatchType;
   status: WatchStatus;
   genre: string;
+  platform?: StreamingPlatform;
   totalSeasons?: number;
   season?: number;
   episode?: number;
