@@ -160,12 +160,15 @@ export function HomeScreen() {
                     {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
                   </div>
                 </div>
-                <div style={{ display: "grid", gap: "8px" }}>
-                  <div style={{ minHeight: "2.6em" }}>
+                <div style={{ display: "grid", gap: "8px", minWidth: 0 }}>
+                  <div style={{ minHeight: "2.5em" }}>
                     <p style={recentlyAddedTitleStyle}>{entry.title}</p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                    <span style={recentlyAddedTypePillStyle}>{entry.type === "series" ? "TV" : "Film"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, flexWrap: "wrap" }}>
+                      <span style={recentlyAddedTypePillStyle}>{entry.type === "series" ? "TV" : "Film"}</span>
+                      <span style={{ ...recentlyAddedStatusPillStyle, ...(statusPillStyleByStatus(entry.status)) }}>{statusLabel(entry.status)}</span>
+                    </div>
                     <span style={{ color: "var(--muted)", fontSize: "1rem", lineHeight: 1 }}>›</span>
                   </div>
                 </div>
@@ -238,12 +241,12 @@ const wideCardStyle: CSSProperties = {
 
 const recentlyAddedCardStyle: CSSProperties = {
   display: "grid",
-  gap: "14px",
-  borderRadius: "18px",
+  gap: "10px",
+  borderRadius: "16px",
   border: "1px solid var(--card-border)",
   background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 88%, transparent), var(--card-bg))",
-  padding: "14px",
-  minHeight: "176px",
+  padding: "12px",
+  minHeight: "142px",
   alignContent: "space-between"
 };
 
@@ -255,9 +258,9 @@ const recentlyAddedTopStyle: CSSProperties = {
 };
 
 const recentlyAddedMediaWrapStyle: CSSProperties = {
-  width: "82px",
-  height: "82px",
-  borderRadius: "18px",
+  width: "64px",
+  height: "64px",
+  borderRadius: "14px",
   display: "grid",
   placeItems: "center",
   background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
@@ -266,26 +269,40 @@ const recentlyAddedMediaWrapStyle: CSSProperties = {
 
 const recentlyAddedTitleStyle: CSSProperties = {
   color: "var(--text-strong)",
-  fontSize: "1rem",
+  fontSize: "0.95rem",
   fontWeight: 760,
-  lineHeight: 1.3,
+  lineHeight: 1.25,
   display: "-webkit-box",
   WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
-  overflow: "hidden"
+  overflow: "hidden",
+  overflowWrap: "anywhere"
 };
 
 const recentlyAddedTypePillStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minHeight: "28px",
-  padding: "0 10px",
+  minHeight: "24px",
+  padding: "0 8px",
   borderRadius: "999px",
   background: "var(--input-bg)",
   border: "1px solid var(--input-border)",
   color: "var(--muted)",
-  fontSize: "0.78rem",
+  fontSize: "0.74rem",
+  fontWeight: 700,
+  letterSpacing: "0.02em"
+};
+
+const recentlyAddedStatusPillStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "24px",
+  padding: "0 8px",
+  borderRadius: "999px",
+  border: "1px solid transparent",
+  fontSize: "0.74rem",
   fontWeight: 700,
   letterSpacing: "0.02em"
 };
@@ -307,4 +324,30 @@ function tileToneByIndex(id: string): "red" | "green" | "blue" | "purple" {
   let hash = 0;
   for (let i = 0; i < id.length; i += 1) hash = (hash + id.charCodeAt(i)) % tones.length;
   return tones[hash];
+}
+
+function statusLabel(status: "watchlist" | "watching" | "completed" | "dropped") {
+  switch (status) {
+    case "watching":
+      return "Watching";
+    case "completed":
+      return "Completed";
+    case "dropped":
+      return "Dropped";
+    default:
+      return "Watchlist";
+  }
+}
+
+function statusPillStyleByStatus(status: "watchlist" | "watching" | "completed" | "dropped"): CSSProperties {
+  switch (status) {
+    case "watching":
+      return { background: "rgba(233, 180, 50, 0.14)", color: "#a46b00", borderColor: "rgba(233, 180, 50, 0.28)" };
+    case "completed":
+      return { background: "rgba(138, 211, 109, 0.14)", color: "#397a23", borderColor: "rgba(138, 211, 109, 0.28)" };
+    case "dropped":
+      return { background: "rgba(136, 146, 168, 0.16)", color: "#5a6578", borderColor: "rgba(136, 146, 168, 0.28)" };
+    default:
+      return { background: "rgba(242, 95, 106, 0.12)", color: "#a22d39", borderColor: "rgba(242, 95, 106, 0.26)" };
+  }
 }
