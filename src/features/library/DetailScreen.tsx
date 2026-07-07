@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EntryEditor } from "../../components/EntryEditor";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { MediaLogo, PlatformLogo, platformLabel } from "../../components/icons";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
@@ -92,7 +93,31 @@ export function DetailScreen() {
       </section>
 
       {editing ? (
-        <EntryEditor initial={entry} submitLabel="Save Changes" onSubmit={onSave} />
+        <ErrorBoundary
+          resetKey={`${entry.id}-${editing}`}
+          fallback={
+            <section className="card" style={{ display: "grid", gap: "12px" }}>
+              <h2 style={{ fontSize: "1.2rem" }}>Couldn&apos;t open editor</h2>
+              <p style={{ color: "var(--muted)" }}>This item has data the editor couldn&apos;t render safely.</p>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                style={{ borderRadius: "999px", border: "none", padding: "12px", background: "var(--accent)", color: "var(--text-inverse)", fontWeight: 700 }}
+              >
+                Back to Details
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                style={{ borderRadius: "999px", border: "1px solid var(--input-border)", padding: "12px", background: "var(--bg-panel)", color: "var(--fg)", fontWeight: 650 }}
+              >
+                Reload App
+              </button>
+            </section>
+          }
+        >
+          <EntryEditor initial={entry} submitLabel="Save Changes" onSubmit={onSave} />
+        </ErrorBoundary>
       ) : (
         <>
           <section style={{ display: "grid", placeItems: "center", textAlign: "center", gap: "10px", marginTop: "2px" }}>

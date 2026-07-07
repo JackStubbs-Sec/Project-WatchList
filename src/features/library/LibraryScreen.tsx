@@ -60,7 +60,7 @@ export function LibraryScreen() {
   }, [entries, genre, platform, query, segment]);
 
   return (
-    <main>
+    <main style={{ paddingBottom: "calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-4))" }}>
       <section className="screen-header">
         <div>
           <h1 className="screen-title">Library</h1>
