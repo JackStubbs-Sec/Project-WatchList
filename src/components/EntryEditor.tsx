@@ -84,10 +84,18 @@ function normalizeEntryInitial(initial?: Partial<WatchEntry>): EntryEditorData {
   };
 }
 
-function toNumberOrUndefined(value: string): number | undefined {
-  if (!value.trim()) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+function toNumberOrUndefined(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  if (typeof value === "string") {
+    if (!value.trim()) return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+
+  return undefined;
 }
 
 export function EntryEditor({ initial, submitLabel, onSubmit }: EntryEditorProps) {

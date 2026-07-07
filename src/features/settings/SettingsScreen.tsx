@@ -103,7 +103,7 @@ export function SettingsScreen() {
 
       <section className="card" style={{ marginBottom: "var(--space-5)", display: "grid", gap: "8px" }}>
         <h2 className="section-title">About</h2>
-        <p style={{ color: "var(--muted)" }}>Version 0.1.0</p>
+        <p style={{ color: "var(--muted)" }}>Version 1.0.0</p>
         <p style={{ color: "var(--muted)" }}>WatchList is your premium personal watch journal.</p>
       </section>
 

@@ -14,6 +14,19 @@ export function DetailScreen() {
   const updateEntry = useWatchStore((state) => state.updateEntry);
   const removeEntry = useWatchStore((state) => state.removeEntry);
   const [editing, setEditing] = useState(false);
+  const [useRecoveryEditor, setUseRecoveryEditor] = useState(false);
+  const [editAttempt, setEditAttempt] = useState(0);
+
+  function enterEditMode() {
+    setUseRecoveryEditor(false);
+    setEditAttempt((prev) => prev + 1);
+    setEditing(true);
+  }
+
+  function exitEditMode() {
+    setEditing(false);
+    setUseRecoveryEditor(false);
+  }
 
   function goBack() {
     if (window.history.length > 1) {
@@ -88,26 +101,44 @@ export function DetailScreen() {
         >
           ←
         </button>
-        <button type="button" onClick={() => setEditing((prev) => !prev)} style={{ background: "transparent", border: "none", color: "var(--accent)", fontWeight: 650, cursor: "pointer" }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (editing) {
+              exitEditMode();
+              return;
+            }
+            enterEditMode();
+          }}
+          style={{ background: "transparent", border: "none", color: "var(--accent)", fontWeight: 650, cursor: "pointer" }}
+        >
           {editing ? "Done" : "Edit"}
         </button>
       </section>
 
       {editing ? (
-        <ErrorBoundary
-          resetKey={`${entry.id}-${editing}`}
-          fallback={
-            <FallbackEditor
-              entry={currentEntry}
-              onCancel={() => setEditing(false)}
-              onSubmit={async (value) => {
-                await onSave(value);
-              }}
-            />
-          }
-        >
-          <EntryEditor initial={entry} submitLabel="Save Changes" onSubmit={onSave} />
-        </ErrorBoundary>
+        useRecoveryEditor ? (
+          <FallbackEditor
+            entry={currentEntry}
+            onCancel={exitEditMode}
+            onSubmit={async (value) => {
+              await onSave(value);
+            }}
+          />
+        ) : (
+          <ErrorBoundary
+            resetKey={`${entry.id}-${editAttempt}`}
+            fallback={
+              <EditorRecoveryPrompt
+                onRetry={() => setEditAttempt((prev) => prev + 1)}
+                onUseRecovery={() => setUseRecoveryEditor(true)}
+                onCancel={exitEditMode}
+              />
+            }
+          >
+            <EntryEditor initial={entry} submitLabel="Save Changes" onSubmit={onSave} />
+          </ErrorBoundary>
+        )
       ) : (
         <>
           <section style={{ display: "grid", placeItems: "center", textAlign: "center", gap: "10px", marginTop: "2px" }}>
@@ -370,6 +401,26 @@ function FallbackEditor({
   );
 }
 
+function EditorRecoveryPrompt({ onRetry, onUseRecovery, onCancel }: { onRetry: () => void; onUseRecovery: () => void; onCancel: () => void }) {
+  return (
+    <section className="card" style={{ display: "grid", gap: "12px" }}>
+      <div style={{ display: "grid", gap: "4px" }}>
+        <h2 style={{ fontSize: "1.2rem" }}>Editor error</h2>
+        <p style={{ color: "var(--muted)" }}>The full editor hit an error for this item. You can retry it, or open the recovery editor.</p>
+      </div>
+      <button type="button" onClick={onRetry} style={primaryActionStyle}>
+        Try full editor again
+      </button>
+      <button type="button" onClick={onUseRecovery} style={secondaryActionStyle}>
+        Open recovery editor
+      </button>
+      <button type="button" onClick={onCancel} style={secondaryActionStyle}>
+        Cancel
+      </button>
+    </section>
+  );
+}
+
 const fieldBlockStyle: CSSProperties = {
   display: "grid",
   gap: "6px"
@@ -400,10 +451,11 @@ const primaryActionStyle: CSSProperties = {
 };
 
 const secondaryActionStyle: CSSProperties = {
-  borderRadius: "999px",
+  borderRadius: "10px",
   border: "1px solid var(--input-border)",
-  padding: "12px",
-  background: "var(--bg-panel)",
+  padding: "10px",
+  background: "var(--input-bg)",
   color: "var(--fg)",
-  fontWeight: 650
+  fontWeight: 650,
+  cursor: "pointer"
 };
