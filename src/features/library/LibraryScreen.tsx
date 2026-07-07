@@ -127,7 +127,7 @@ export function LibraryScreen() {
         return (
           <section key={group.status} className="card" style={{ padding: "14px" }}>
             <button type="button" onClick={() => setCollapsed((state) => ({ ...state, [group.status]: !state[group.status] }))} style={sectionToggleStyle}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
                 <span
                   style={{
                     width: "42px",
@@ -142,7 +142,7 @@ export function LibraryScreen() {
                 >
                   {meta.icon}
                 </span>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p style={{ fontWeight: 700 }}>{meta.label}</p>
                   <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
                     {group.items.length} {group.items.length === 1 ? "item" : "items"}
@@ -171,10 +171,10 @@ export function LibraryScreen() {
                     <MediaLogo type={entry.type} size="medium" tone={entry.type === "series" ? "purple" : "red"} />
                     {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={emptyPlatformStyle}>?</span>}
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.98rem", fontWeight: 720, lineHeight: 1.2 }}>
+                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.98rem", fontWeight: 720, lineHeight: 1.2, overflowWrap: "anywhere" }}>
                         {entry.title}
                       </span>
-                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.84rem", marginTop: "3px" }}>
+                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.84rem", marginTop: "3px", overflowWrap: "anywhere" }}>
                         {entry.type === "series" ? "TV Series" : "Movie"}
                         {entry.genre.trim() ? ` • ${entry.genre.trim()}` : ""}
                         {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}

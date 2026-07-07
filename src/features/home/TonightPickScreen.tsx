@@ -50,7 +50,7 @@ export function TonightPickScreen() {
         >
           ✕
         </button>
-        <div style={{ flex: 1, marginLeft: "12px" }}>
+        <div style={{ flex: 1, minWidth: 0, marginLeft: "12px" }}>
           <h1 className="screen-title">Tonight&apos;s Pick</h1>
           <p style={{ color: "var(--muted)" }}>Let&apos;s find something to watch</p>
         </div>
@@ -111,6 +111,8 @@ export function TonightPickScreen() {
               value={tonightFilter.genre ?? ""}
               onChange={(event) => setTonightFilter({ genre: event.target.value || undefined })}
               style={{
+                width: "100%",
+                minWidth: 0,
                 border: "1px solid var(--input-border)",
                 borderRadius: "10px",
                 background: "var(--input-bg)",
@@ -134,6 +136,8 @@ export function TonightPickScreen() {
                 })
               }
               style={{
+                width: "100%",
+                minWidth: 0,
                 border: "1px solid var(--input-border)",
                 borderRadius: "10px",
                 background: "var(--input-bg)",
@@ -157,11 +161,11 @@ export function TonightPickScreen() {
         {tonight ? (
           <div style={{ textAlign: "center", display: "grid", gap: "14px" }}>
             <p style={{ color: "var(--muted)" }}>Your pick is...</p>
-            <h2 style={{ fontSize: "1.9rem" }}>{tonight.title}</h2>
+            <h2 style={{ fontSize: "1.9rem", lineHeight: 1.15, overflowWrap: "anywhere" }}>{tonight.title}</h2>
             <p style={{ color: "var(--muted)", textTransform: "capitalize" }}>{tonight.type}</p>
             <Link
               to={`/library/${tonight.id}`}
-              style={{ borderRadius: "999px", background: "var(--accent-secondary)", color: "#14100b", padding: "12px", fontWeight: 700 }}
+              style={{ borderRadius: "999px", background: "var(--accent-secondary)", color: "#14100b", padding: "12px", fontWeight: 700, overflowWrap: "anywhere" }}
             >
               View Details
             </Link>
