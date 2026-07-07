@@ -22,6 +22,8 @@ export function TabBar() {
         backdropFilter: "blur(14px)",
         display: "grid",
         gridTemplateColumns: "repeat(5, 1fr)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
         paddingBottom: "env(safe-area-inset-bottom)",
         zIndex: 20
       }}
