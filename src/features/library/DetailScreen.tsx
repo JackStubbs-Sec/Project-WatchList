@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EntryEditor } from "../../components/EntryEditor";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { MediaLogo, PlatformLogo, platformLabel } from "../../components/icons";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
+import { streamingPlatforms, type StreamingPlatform, type WatchEntry, type WatchStatus, type WatchType } from "../../types/watch";
 
 export function DetailScreen() {
   const { entryId } = useParams<{ entryId: string }>();
@@ -96,24 +97,13 @@ export function DetailScreen() {
         <ErrorBoundary
           resetKey={`${entry.id}-${editing}`}
           fallback={
-            <section className="card" style={{ display: "grid", gap: "12px" }}>
-              <h2 style={{ fontSize: "1.2rem" }}>Couldn&apos;t open editor</h2>
-              <p style={{ color: "var(--muted)" }}>This item has data the editor couldn&apos;t render safely.</p>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                style={{ borderRadius: "999px", border: "none", padding: "12px", background: "var(--accent)", color: "var(--text-inverse)", fontWeight: 700 }}
-              >
-                Back to Details
-              </button>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                style={{ borderRadius: "999px", border: "1px solid var(--input-border)", padding: "12px", background: "var(--bg-panel)", color: "var(--fg)", fontWeight: 650 }}
-              >
-                Reload App
-              </button>
-            </section>
+            <FallbackEditor
+              entry={currentEntry}
+              onCancel={() => setEditing(false)}
+              onSubmit={async (value) => {
+                await onSave(value);
+              }}
+            />
           }
         >
           <EntryEditor initial={entry} submitLabel="Save Changes" onSubmit={onSave} />
@@ -269,3 +259,151 @@ function formatDate(isoDate: string) {
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+function FallbackEditor({
+  entry,
+  onCancel,
+  onSubmit
+}: {
+  entry: WatchEntry;
+  onCancel: () => void;
+  onSubmit: (value: EntryEditorValue) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(entry.title);
+  const [type, setType] = useState<WatchType>(entry.type === "series" ? "series" : "movie");
+  const [status, setStatus] = useState<WatchStatus>(entry.status);
+  const [genre, setGenre] = useState(entry.genre ?? "");
+  const [platform, setPlatform] = useState<StreamingPlatform | "">(entry.platform ?? "");
+  const [notes, setNotes] = useState(entry.notes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <section className="card" style={{ display: "grid", gap: "12px" }}>
+      <div style={{ display: "grid", gap: "4px" }}>
+        <h2 style={{ fontSize: "1.2rem" }}>Recovered editor</h2>
+        <p style={{ color: "var(--muted)" }}>The full editor failed, so a safe fallback editor is shown for this item.</p>
+      </div>
+
+      <label style={fieldBlockStyle}>
+        <span style={fieldLabelStyle}>Title</span>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} style={fieldInputStyle} />
+      </label>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        <label style={fieldBlockStyle}>
+          <span style={fieldLabelStyle}>Type</span>
+          <select value={type} onChange={(event) => setType(event.target.value as WatchType)} style={fieldInputStyle}>
+            <option value="movie">Movie</option>
+            <option value="series">TV Series</option>
+          </select>
+        </label>
+        <label style={fieldBlockStyle}>
+          <span style={fieldLabelStyle}>Status</span>
+          <select value={status} onChange={(event) => setStatus(event.target.value as WatchStatus)} style={fieldInputStyle}>
+            <option value="watchlist">Watchlist</option>
+            <option value="watching">Watching</option>
+            <option value="completed">Completed</option>
+            <option value="dropped">Dropped</option>
+          </select>
+        </label>
+      </div>
+
+      <label style={fieldBlockStyle}>
+        <span style={fieldLabelStyle}>Genre</span>
+        <input value={genre} onChange={(event) => setGenre(event.target.value)} style={fieldInputStyle} />
+      </label>
+
+      <label style={fieldBlockStyle}>
+        <span style={fieldLabelStyle}>Streaming Service</span>
+        <select value={platform} onChange={(event) => setPlatform(event.target.value as StreamingPlatform | "")} style={fieldInputStyle}>
+          <option value="">Not set</option>
+          {streamingPlatforms.map((item) => (
+            <option key={item} value={item}>
+              {platformLabel(item)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label style={fieldBlockStyle}>
+        <span style={fieldLabelStyle}>Notes</span>
+        <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} style={fieldInputStyle} />
+      </label>
+
+      <div style={{ display: "grid", gap: "8px" }}>
+        <button
+          type="button"
+          disabled={saving || !title.trim()}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onSubmit({
+                title: title.trim(),
+                type,
+                status,
+                genre: genre.trim(),
+                platform: platform || undefined,
+                totalSeasons: type === "series" ? entry.totalSeasons : undefined,
+                season: type === "series" ? entry.season : undefined,
+                episode: type === "series" ? entry.episode : undefined,
+                isFavorite: Boolean(entry.isFavorite),
+                isRecommended: Boolean(entry.isRecommended),
+                rating: entry.rating,
+                review: entry.review,
+                notes: notes.trim() || undefined,
+                seriesLength: type === "series" ? entry.seriesLength : undefined,
+                lastWatchedAt: entry.lastWatchedAt
+              });
+            } finally {
+              setSaving(false);
+            }
+          }}
+          style={primaryActionStyle}
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+        <button type="button" onClick={onCancel} style={secondaryActionStyle}>
+          Back to Details
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const fieldBlockStyle: CSSProperties = {
+  display: "grid",
+  gap: "6px"
+};
+
+const fieldLabelStyle: CSSProperties = {
+  color: "var(--text-strong)",
+  fontSize: "0.83rem",
+  fontWeight: 600
+};
+
+const fieldInputStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px",
+  borderRadius: "12px",
+  border: "1px solid var(--input-border)",
+  background: "var(--input-bg)",
+  color: "var(--fg)"
+};
+
+const primaryActionStyle: CSSProperties = {
+  borderRadius: "999px",
+  border: "none",
+  padding: "12px",
+  background: "var(--accent)",
+  color: "var(--text-inverse)",
+  fontWeight: 700
+};
+
+const secondaryActionStyle: CSSProperties = {
+  borderRadius: "999px",
+  border: "1px solid var(--input-border)",
+  padding: "12px",
+  background: "var(--bg-panel)",
+  color: "var(--fg)",
+  fontWeight: 650
+};

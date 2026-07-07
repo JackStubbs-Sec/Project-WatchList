@@ -60,7 +60,7 @@ export function LibraryScreen() {
   }, [entries, genre, platform, query, segment]);
 
   return (
-    <main style={{ paddingBottom: "calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-4))" }}>
+    <main style={{ paddingBottom: "calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-4))", overflowX: "hidden" }}>
       <section className="screen-header">
         <div>
           <h1 className="screen-title">Library</h1>
@@ -165,16 +165,19 @@ export function LibraryScreen() {
                       gridTemplateColumns: "auto auto 1fr auto",
                       alignItems: "center",
                       gap: "10px",
-                      padding: "8px 2px"
+                      padding: "8px 2px",
+                      width: "100%",
+                      maxWidth: "100%",
+                      overflow: "hidden"
                     }}
                   >
                     <MediaLogo type={entry.type} size="medium" tone={entry.type === "series" ? "purple" : "red"} />
                     {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={emptyPlatformStyle}>?</span>}
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.98rem", fontWeight: 720, lineHeight: 1.2, overflowWrap: "anywhere" }}>
+                    <span style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
+                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.98rem", fontWeight: 720, lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
                         {entry.title}
                       </span>
-                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.84rem", marginTop: "3px", overflowWrap: "anywhere" }}>
+                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.84rem", marginTop: "3px", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                         {entry.type === "series" ? "TV Series" : "Movie"}
                         {entry.genre.trim() ? ` • ${entry.genre.trim()}` : ""}
                         {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}
