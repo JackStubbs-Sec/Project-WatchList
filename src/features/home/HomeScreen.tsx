@@ -149,19 +149,19 @@ export function HomeScreen() {
           <Link to="/library" className="subtle-link">See All</Link>
         </div>
         {recentlyAdded.length ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px" }}>
+          <div style={recentlyAddedRailStyle}>
             {recentlyAdded.map((entry) => (
               <Link key={entry.id} to={`/library/${entry.id}`} style={recentlyAddedCardStyle}>
                 <div style={recentlyAddedTopStyle}>
                   <div style={recentlyAddedMediaWrapStyle}>
-                    <MediaLogo type={entry.type} size="small" tone={tileToneByIndex(entry.id)} />
+                    {entry.platform ? <PlatformLogo platform={entry.platform} /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
+                  <div style={{ display: "grid", placeItems: "start end" }}>
+                    <span style={{ color: "var(--muted)", fontSize: "0.96rem", lineHeight: 1 }}>›</span>
                   </div>
                 </div>
-                <div style={{ display: "grid", gap: "8px", minWidth: 0 }}>
-                  <div style={{ minHeight: "2.5em" }}>
+                <div style={{ display: "grid", gap: "6px", minWidth: 0 }}>
+                  <div style={{ minHeight: "2.35em" }}>
                     <p style={recentlyAddedTitleStyle}>{entry.title}</p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
@@ -169,7 +169,6 @@ export function HomeScreen() {
                       <span style={recentlyAddedTypePillStyle}>{entry.type === "series" ? "TV" : "Film"}</span>
                       <span style={{ ...recentlyAddedStatusPillStyle, ...(statusPillStyleByStatus(entry.status)) }}>{statusLabel(entry.status)}</span>
                     </div>
-                    <span style={{ color: "var(--muted)", fontSize: "1rem", lineHeight: 1 }}>›</span>
                   </div>
                 </div>
               </Link>
@@ -240,27 +239,38 @@ const wideCardStyle: CSSProperties = {
 };
 
 const recentlyAddedCardStyle: CSSProperties = {
+  flex: "0 0 clamp(108px, 29vw, 132px)",
   display: "grid",
-  gap: "10px",
+  gap: "8px",
   borderRadius: "16px",
   border: "1px solid var(--card-border)",
   background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 88%, transparent), var(--card-bg))",
-  padding: "12px",
-  minHeight: "142px",
+  padding: "9px",
+  minHeight: "112px",
   alignContent: "space-between"
+};
+
+const recentlyAddedRailStyle: CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  overflowX: "auto",
+  overscrollBehaviorX: "contain",
+  paddingBottom: "2px",
+  maxWidth: "100%",
+  minWidth: 0
 };
 
 const recentlyAddedTopStyle: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr auto",
-  alignItems: "start",
-  gap: "10px"
+  alignItems: "center",
+  gap: "8px"
 };
 
 const recentlyAddedMediaWrapStyle: CSSProperties = {
-  width: "64px",
-  height: "64px",
-  borderRadius: "14px",
+  width: "52px",
+  height: "52px",
+  borderRadius: "13px",
   display: "grid",
   placeItems: "center",
   background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
@@ -269,14 +279,26 @@ const recentlyAddedMediaWrapStyle: CSSProperties = {
 
 const recentlyAddedTitleStyle: CSSProperties = {
   color: "var(--text-strong)",
-  fontSize: "0.95rem",
+  fontSize: "0.9rem",
   fontWeight: 760,
-  lineHeight: 1.25,
+  lineHeight: 1.2,
   display: "-webkit-box",
   WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
   overflow: "hidden",
   overflowWrap: "anywhere"
+};
+
+const recentlyAddedEmptyPlatformStyle: CSSProperties = {
+  width: "28px",
+  height: "28px",
+  borderRadius: "8px",
+  border: "1px dashed var(--input-border)",
+  color: "var(--muted)",
+  display: "grid",
+  placeItems: "center",
+  fontSize: "0.72rem",
+  fontWeight: 700
 };
 
 const recentlyAddedTypePillStyle: CSSProperties = {
@@ -306,25 +328,6 @@ const recentlyAddedStatusPillStyle: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.02em"
 };
-
-const recentlyAddedEmptyPlatformStyle: CSSProperties = {
-  width: "34px",
-  height: "34px",
-  borderRadius: "10px",
-  border: "1px dashed var(--input-border)",
-  color: "var(--muted)",
-  display: "grid",
-  placeItems: "center",
-  fontSize: "0.8rem",
-  fontWeight: 700
-};
-
-function tileToneByIndex(id: string): "red" | "green" | "blue" | "purple" {
-  const tones: Array<"red" | "green" | "blue" | "purple"> = ["red", "green", "blue", "purple"];
-  let hash = 0;
-  for (let i = 0; i < id.length; i += 1) hash = (hash + id.charCodeAt(i)) % tones.length;
-  return tones[hash];
-}
 
 function statusLabel(status: "watchlist" | "watching" | "completed" | "dropped") {
   switch (status) {
