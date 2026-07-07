@@ -216,6 +216,7 @@ const sectionToggleStyle: React.CSSProperties = {
   width: "100%",
   border: "none",
   background: "transparent",
+  color: "var(--fg)",
   padding: 0,
   display: "flex",
   alignItems: "center",

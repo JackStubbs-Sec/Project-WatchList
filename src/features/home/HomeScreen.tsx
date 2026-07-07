@@ -107,11 +107,11 @@ export function HomeScreen() {
               </p>
               {continueWatching.type === "series" ? (
                 <>
-                  <p style={{ color: "#3a4a63", marginBottom: "8px" }}>
+                  <p style={{ color: "var(--text-strong)", marginBottom: "8px" }}>
                     Episode {continueWatching.episode ?? "-"}
                   </p>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "10px" }}>
-                    <div style={{ height: "8px", borderRadius: "999px", background: "rgba(14,22,38,0.12)", overflow: "hidden" }}>
+                    <div style={{ height: "8px", borderRadius: "999px", background: "var(--divider)", overflow: "hidden" }}>
                       <div style={{ width: `${getSeasonProgressPercent(continueWatching.episode)}%`, height: "100%", background: "var(--accent)" }} />
                     </div>
                     <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
@@ -149,17 +149,20 @@ export function HomeScreen() {
           <Link to="/library" className="subtle-link">See All</Link>
         </div>
         {recentlyAdded.length ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px" }}>
             {recentlyAdded.map((entry) => (
-              <Link key={entry.id} to={`/library/${entry.id}`} style={miniCardStyle}>
-                <MediaLogo type={entry.type} size="small" tone={tileToneByIndex(entry.id)} />
-                {entry.platform ? (
-                  <div style={{ marginTop: "8px", display: "flex", justifyContent: "flex-start" }}>
-                    <PlatformLogo platform={entry.platform} compact />
-                  </div>
-                ) : null}
-                <p style={{ marginTop: "8px", fontSize: "0.94rem", fontWeight: 640, lineHeight: 1.2 }}>{entry.title}</p>
-                <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: "2px" }}>{entry.type === "series" ? "TV Series" : "Movie"}</p>
+              <Link key={entry.id} to={`/library/${entry.id}`} style={recentlyAddedCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                  <MediaLogo type={entry.type} size="medium" tone={tileToneByIndex(entry.id)} />
+                  {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
+                </div>
+                <div style={{ display: "grid", gap: "4px" }}>
+                  <p style={{ color: "var(--text-strong)", fontSize: "1rem", fontWeight: 720, lineHeight: 1.2 }}>{entry.title}</p>
+                  <p style={{ color: "var(--muted)", fontSize: "0.82rem", fontWeight: 650 }}>
+                    {entry.type === "series" ? "TV Series" : "Movie"}
+                  </p>
+                  {entry.platform ? <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{platformLabel(entry.platform)}</p> : null}
+                </div>
               </Link>
             ))}
           </div>
@@ -217,23 +220,37 @@ const pickButtonStyle: CSSProperties = {
   cursor: "pointer"
 };
 
-const miniCardStyle: CSSProperties = {
-  display: "block",
-  borderRadius: "14px",
-  border: "1px solid var(--card-border)",
-  background: "var(--card-bg)",
-  padding: "8px",
-  minHeight: "130px"
-};
-
 const wideCardStyle: CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   borderRadius: "12px",
-  border: "1px solid rgba(14,22,38,0.1)",
+  border: "1px solid var(--card-border)",
   background: "var(--bg-panel)",
   padding: "12px"
+};
+
+const recentlyAddedCardStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+  borderRadius: "16px",
+  border: "1px solid var(--card-border)",
+  background: "var(--card-bg)",
+  padding: "12px",
+  minHeight: "168px",
+  alignContent: "space-between"
+};
+
+const recentlyAddedEmptyPlatformStyle: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "10px",
+  border: "1px dashed var(--input-border)",
+  color: "var(--muted)",
+  display: "grid",
+  placeItems: "center",
+  fontSize: "0.8rem",
+  fontWeight: 700
 };
 
 function tileToneByIndex(id: string): "red" | "green" | "blue" | "purple" {
