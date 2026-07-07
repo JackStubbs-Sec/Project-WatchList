@@ -171,19 +171,21 @@ export function LibraryScreen() {
                       overflow: "hidden"
                     }}
                   >
-                    <MediaLogo type={entry.type} size="medium" tone={entry.type === "series" ? "purple" : "red"} />
+                    <span style={libraryMediaIconWrapStyle}>
+                      <MediaLogo type={entry.type} size="small" tone={entry.type === "series" ? "purple" : "red"} />
+                    </span>
                     {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={emptyPlatformStyle}>?</span>}
                     <span style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
-                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.98rem", fontWeight: 720, lineHeight: 1.2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.96rem", fontWeight: 720, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {entry.title}
                       </span>
-                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.84rem", marginTop: "3px", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      <span style={{ display: "block", color: "var(--muted)", fontSize: "0.8rem", marginTop: "3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {entry.type === "series" ? "TV Series" : "Movie"}
                         {entry.genre.trim() ? ` • ${entry.genre.trim()}` : ""}
                         {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}
                       </span>
                     </span>
-                    <span style={{ color: "var(--muted)", fontSize: "1.2rem" }}>›</span>
+                    <span style={{ color: "var(--muted)", fontSize: "1.1rem", flexShrink: 0 }}>›</span>
                   </Link>
                 ))}
               </div>
@@ -204,15 +206,23 @@ const filterStyle: React.CSSProperties = {
 };
 
 const emptyPlatformStyle: React.CSSProperties = {
-  width: "34px",
-  height: "34px",
-  borderRadius: "10px",
+  width: "30px",
+  height: "30px",
+  borderRadius: "9px",
   border: "1px dashed var(--input-border)",
   color: "var(--muted)",
   display: "grid",
   placeItems: "center",
   fontSize: "0.85rem",
   fontWeight: 700
+};
+
+const libraryMediaIconWrapStyle: React.CSSProperties = {
+  width: "52px",
+  height: "52px",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0
 };
 
 const sectionToggleStyle: React.CSSProperties = {
