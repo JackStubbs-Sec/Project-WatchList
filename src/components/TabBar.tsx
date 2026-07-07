@@ -16,7 +16,7 @@ export function TabBar() {
         left: 0,
         right: 0,
         bottom: 0,
-        height: "calc(var(--tab-height) + env(safe-area-inset-bottom))",
+        height: "var(--tab-height)",
         background: "var(--nav-bg)",
         borderTop: "1px solid var(--nav-border)",
         backdropFilter: "blur(14px)",
