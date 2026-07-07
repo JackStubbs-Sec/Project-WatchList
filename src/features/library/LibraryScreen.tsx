@@ -101,7 +101,7 @@ export function LibraryScreen() {
       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles" className="soft-input" />
 
       <section className="card" style={{ padding: "10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "8px" }}>
           <select value={genre} onChange={(event) => setGenre(event.target.value)} style={filterStyle}>
             <option value="">All genres</option>
             {genreOptions.map((item) => (
@@ -155,7 +155,7 @@ export function LibraryScreen() {
               </span>
             </button>
             {!collapsed[group.status] && group.items.length ? (
-              <div style={{ marginTop: "10px", borderTop: "1px solid var(--divider)", paddingTop: "10px", display: "grid", gap: "10px" }}>
+              <div style={{ marginTop: "10px", borderTop: "1px solid var(--divider)", paddingTop: "10px", display: "grid", gap: "10px", minWidth: 0 }}>
                 {group.items.map((entry) => (
                   <Link
                     key={entry.id}
@@ -210,11 +210,17 @@ export function LibraryScreen() {
 }
 
 const filterStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  maxWidth: "100%",
   border: "1px solid var(--input-border)",
   borderRadius: "10px",
   background: "var(--input-bg)",
   color: "var(--fg)",
-  padding: "10px"
+  padding: "10px",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
 };
 
 const emptyPlatformStyle: React.CSSProperties = {
