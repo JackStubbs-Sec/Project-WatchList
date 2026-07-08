@@ -79,7 +79,7 @@ export function HomeScreen() {
   return (
     <main>
       <section className="stack" style={{ gap: "6px" }}>
-        <h1 style={{ fontSize: "2.1rem", marginBottom: 0 }}>{`${greeting}, Jack 👋`}</h1>
+        <h1 style={{ fontSize: "2.1rem", marginBottom: 0 }}>{`${greeting} 👋`}</h1>
         <p style={{ color: "var(--muted)" }}>Here&apos;s your watch overview</p>
       </section>
 
