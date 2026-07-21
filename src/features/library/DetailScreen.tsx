@@ -484,7 +484,7 @@ const fieldInputStyle: CSSProperties = {
   border: "1px solid var(--input-border)",
   background: "var(--input-bg)",
   color: "var(--fg)",
-  fontSize: "0.88rem"
+  fontSize: "16px"
 };
 
 const primaryActionStyle: CSSProperties = {

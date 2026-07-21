@@ -152,7 +152,7 @@ export function ReviewScreen() {
               color: "var(--fg)",
               resize: "none",
               padding: "11px",
-              fontSize: "0.88rem"
+              fontSize: "16px"
             }}
             placeholder="Share your thoughts"
           />

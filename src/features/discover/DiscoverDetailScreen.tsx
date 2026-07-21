@@ -298,5 +298,5 @@ const inputStyle: CSSProperties = {
   border: "1px solid var(--input-border)",
   background: "var(--input-bg)",
   color: "var(--fg)",
-  fontSize: "0.86rem"
+  fontSize: "16px"
 };
