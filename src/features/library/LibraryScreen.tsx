@@ -1,46 +1,48 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { MediaLogo, PlatformLogo, platformLabel } from "../../components/icons";
+import { MediaLogo } from "../../components/icons";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { useWatchStore } from "../../store/useWatchStore";
-import type { WatchStatus } from "../../types/watch";
+import { isDropped } from "../../lib/entryTags";
+import type { WatchEntry, WatchStatus } from "../../types/watch";
 
-const statuses: WatchStatus[] = ["watchlist", "watching", "completed", "dropped"];
+type Group = WatchStatus | "dropped";
 
-const statusMeta: Record<WatchStatus, { label: string; icon: string; tone: string }> = {
-  watchlist: { label: "Watchlist", icon: "🔖", tone: "#f25f6a" },
+const groups: Group[] = ["want_to_watch", "watching", "watched", "dropped"];
+
+const groupMeta: Record<Group, { label: string; icon: string; tone: string }> = {
+  want_to_watch: { label: "Want to Watch", icon: "🔖", tone: "#f25f6a" },
   watching: { label: "Watching", icon: "▶", tone: "#e9b432" },
-  completed: { label: "Completed", icon: "✓", tone: "#8ad36d" },
+  watched: { label: "Watched", icon: "✓", tone: "#8ad36d" },
   dropped: { label: "Dropped", icon: "✕", tone: "#8892a8" }
 };
 
-type Segment = "all" | "movie" | "series";
+type Segment = "all" | "movie" | "tv";
+
+function entryGroup(entry: WatchEntry): Group {
+  if (isDropped(entry)) return "dropped";
+  return entry.status;
+}
 
 export function LibraryScreen() {
   const entries = useWatchStore((state) => state.entries);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<Segment>("all");
   const [genre, setGenre] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<WatchStatus, boolean>>({
-    watchlist: false,
+  const [collapsed, setCollapsed] = useState<Record<Group, boolean>>({
+    want_to_watch: false,
     watching: false,
-    completed: false,
+    watched: false,
     dropped: false
   });
 
   const genreOptions = useMemo(() => {
     const values = new Set<string>();
     for (const entry of entries) {
-      const trimmed = entry.genre.trim();
-      if (trimmed) values.add(trimmed);
-    }
-    return Array.from(values).sort((a, b) => a.localeCompare(b));
-  }, [entries]);
-
-  const platformOptions = useMemo(() => {
-    const values = new Set<string>();
-    for (const entry of entries) {
-      if (entry.platform) values.add(entry.platform);
+      for (const value of entry.genres) {
+        const trimmed = value.trim();
+        if (trimmed) values.add(trimmed);
+      }
     }
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [entries]);
@@ -50,14 +52,13 @@ export function LibraryScreen() {
     const filtered = entries
       .filter((entry) => entry.title.toLowerCase().includes(lowered))
       .filter((entry) => segment === "all" || entry.type === segment)
-      .filter((entry) => !genre || entry.genre.trim().toLowerCase() === genre.toLowerCase())
-      .filter((entry) => !platform || entry.platform === platform);
+      .filter((entry) => !genre || entry.genres.some((value) => value.toLowerCase() === genre.toLowerCase()));
 
-    return statuses.map((status) => ({
-      status,
-      items: filtered.filter((entry) => entry.status === status)
+    return groups.map((group) => ({
+      group,
+      items: filtered.filter((entry) => entryGroup(entry) === group)
     }));
-  }, [entries, genre, platform, query, segment]);
+  }, [entries, genre, query, segment]);
 
   return (
     <main style={{ paddingBottom: "calc(var(--tab-height) + env(safe-area-inset-bottom) + var(--space-4))", overflowX: "hidden" }}>
@@ -66,125 +67,98 @@ export function LibraryScreen() {
           <h1 className="screen-title">Library</h1>
           <p style={{ color: "var(--muted)" }}>All your shows and movies</p>
         </div>
+        <Link to="/lists" className="subtle-link">My Lists</Link>
       </section>
 
-      <section className="card" style={{ padding: "8px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-          {[
-            { id: "all", label: "All" },
-            { id: "movie", label: "Movies" },
-            { id: "series", label: "TV Shows" }
-          ].map((item) => {
-            const active = segment === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSegment(item.id as Segment)}
-                style={{
-                  border: "none",
-                  borderRadius: "999px",
-                  padding: "10px",
-                  background: active ? "var(--accent)" : "transparent",
-                  color: active ? "var(--text-inverse)" : "var(--muted)",
-                  fontWeight: 650,
-                  cursor: "pointer"
-                }}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <SegmentedControl
+        ariaLabel="Filter by type"
+        value={segment}
+        onChange={setSegment}
+        options={[
+          { value: "all", label: "All" },
+          { value: "movie", label: "Movies" },
+          { value: "tv", label: "TV Shows" }
+        ]}
+      />
 
       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles" className="soft-input" />
 
-      <section className="card" style={{ padding: "10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "8px" }}>
-          <select value={genre} onChange={(event) => setGenre(event.target.value)} style={filterStyle}>
-            <option value="">All genres</option>
-            {genreOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+      <select value={genre} onChange={(event) => setGenre(event.target.value)} className="soft-input">
+        <option value="">All genres</option>
+        {genreOptions.map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
 
-          <select value={platform} onChange={(event) => setPlatform(event.target.value)} style={filterStyle}>
-            <option value="">All services</option>
-            {platformOptions.map((item) => (
-              <option key={item} value={item}>
-                {platformLabel(item as Parameters<typeof platformLabel>[0])}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
-
-      {grouped.map((group) => {
-        const meta = statusMeta[group.status];
+      {grouped.map(({ group, items }) => {
+        const meta = groupMeta[group];
         return (
-          <section key={group.status} className="card" style={{ padding: "14px" }}>
-            <button type="button" onClick={() => setCollapsed((state) => ({ ...state, [group.status]: !state[group.status] }))} style={sectionToggleStyle}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+          <section key={group} className="card" style={{ padding: "11px" }}>
+            <button type="button" onClick={() => setCollapsed((state) => ({ ...state, [group]: !state[group] }))} style={sectionToggleStyle}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
                 <span
                   style={{
-                    width: "42px",
-                    height: "42px",
-                    borderRadius: "12px",
+                    width: "34px",
+                    height: "34px",
+                    borderRadius: "10px",
                     display: "grid",
                     placeItems: "center",
                     background: meta.tone,
                     color: "#fff",
-                    fontWeight: 800
+                    fontWeight: 800,
+                    fontSize: "0.85rem"
                   }}
                 >
                   {meta.icon}
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ fontWeight: 700 }}>{meta.label}</p>
-                  <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                    {group.items.length} {group.items.length === 1 ? "item" : "items"}
+                  <p style={{ fontWeight: 700, fontSize: "0.88rem" }}>{meta.label}</p>
+                  <p style={{ color: "var(--muted)", fontSize: "0.76rem" }}>
+                    {items.length} {items.length === 1 ? "item" : "items"}
                   </p>
                 </div>
               </div>
-              <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--muted)", fontSize: "0.82rem", fontWeight: 650 }}>
-                <span>{collapsed[group.status] ? "Show" : "Hide"}</span>
-                <span style={{ fontSize: "1rem", lineHeight: 1 }}>{collapsed[group.status] ? "▾" : "▴"}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--muted)", fontSize: "0.74rem", fontWeight: 650 }}>
+                <span>{collapsed[group] ? "Show" : "Hide"}</span>
+                <span style={{ fontSize: "0.9rem", lineHeight: 1 }}>{collapsed[group] ? "▾" : "▴"}</span>
               </span>
             </button>
-            {!collapsed[group.status] && group.items.length ? (
-              <div style={{ marginTop: "10px", borderTop: "1px solid var(--divider)", paddingTop: "10px", display: "grid", gap: "10px", minWidth: 0 }}>
-                {group.items.map((entry) => (
+            {!collapsed[group] && items.length ? (
+              <div style={{ marginTop: "8px", borderTop: "1px solid var(--divider)", paddingTop: "8px", display: "grid", gap: "6px", minWidth: 0 }}>
+                {items.map((entry) => (
                   <Link
                     key={entry.id}
                     to={`/library/${entry.id}`}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "40px 30px minmax(0, 1fr) 14px",
+                      gridTemplateColumns: "34px minmax(0, 1fr) 12px",
                       alignItems: "center",
                       gap: "8px",
-                      padding: "8px 2px",
+                      padding: "6px 2px",
                       width: "100%",
                       maxWidth: "100%",
                       overflow: "hidden"
                     }}
                   >
                     <span style={libraryMediaIconWrapStyle}>
-                      <MediaLogo type={entry.type} size="compact" tone={entry.type === "series" ? "purple" : "red"} />
+                      {entry.posterUrl ? (
+                        <img src={entry.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "8px" }} />
+                      ) : (
+                        <MediaLogo type={entry.type} size="compact" tone={entry.type === "tv" ? "purple" : "red"} />
+                      )}
                     </span>
-                    {entry.platform ? <PlatformLogo platform={entry.platform} compact /> : <span style={emptyPlatformStyle}>?</span>}
                     <span style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
-                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.96rem", fontWeight: 720, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ display: "block", color: "var(--text-strong)", fontSize: "0.86rem", fontWeight: 720, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {entry.title}
                       </span>
                       <span
                         style={{
                           display: "-webkit-box",
                           color: "var(--muted)",
-                          fontSize: "0.8rem",
-                          marginTop: "3px",
+                          fontSize: "0.72rem",
+                          marginTop: "2px",
                           overflow: "hidden",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
@@ -192,12 +166,11 @@ export function LibraryScreen() {
                           overflowWrap: "anywhere"
                         }}
                       >
-                        {entry.type === "series" ? "TV Series" : "Movie"}
-                        {entry.genre.trim() ? ` • ${entry.genre.trim()}` : ""}
-                        {entry.type === "series" && entry.totalSeasons ? ` • ${entry.totalSeasons} season${entry.totalSeasons > 1 ? "s" : ""}` : ""}
+                        {entry.type === "tv" ? "TV Series" : "Movie"}
+                        {entry.genres.length ? ` • ${entry.genres.join(", ")}` : ""}
                       </span>
                     </span>
-                    <span style={{ color: "var(--muted)", fontSize: "1.1rem", flexShrink: 0 }}>›</span>
+                    <span style={{ color: "var(--muted)", fontSize: "1rem", flexShrink: 0 }}>›</span>
                   </Link>
                 ))}
               </div>
@@ -209,38 +182,14 @@ export function LibraryScreen() {
   );
 }
 
-const filterStyle: React.CSSProperties = {
-  width: "100%",
-  minWidth: 0,
-  maxWidth: "100%",
-  border: "1px solid var(--input-border)",
-  borderRadius: "10px",
-  background: "var(--input-bg)",
-  color: "var(--fg)",
-  padding: "10px",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap"
-};
-
-const emptyPlatformStyle: React.CSSProperties = {
-  width: "30px",
-  height: "30px",
-  borderRadius: "9px",
-  border: "1px dashed var(--input-border)",
-  color: "var(--muted)",
-  display: "grid",
-  placeItems: "center",
-  fontSize: "0.85rem",
-  fontWeight: 700
-};
-
 const libraryMediaIconWrapStyle: React.CSSProperties = {
-  width: "40px",
-  height: "40px",
+  width: "34px",
+  height: "34px",
   display: "grid",
   placeItems: "center",
-  flexShrink: 0
+  flexShrink: 0,
+  overflow: "hidden",
+  borderRadius: "8px"
 };
 
 const sectionToggleStyle: React.CSSProperties = {

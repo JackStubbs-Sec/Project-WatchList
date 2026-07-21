@@ -18,26 +18,36 @@ WatchList is a premium personal watch journal built as a mobile-first installabl
 npm install
 ```
 
-3. Run development server:
+3. Add a TMDB v3 API key for local development by creating a `.env` file:
+
+```bash
+VITE_TMDB_API_KEY=your_tmdb_v3_key
+```
+
+4. Run development server:
 
 ```bash
 npm run dev
 ```
 
-4. Build production bundle:
+5. Build production bundle:
 
 ```bash
 npm run build
 ```
 
-## V1 Areas
+## Areas
 
 - Home
+- Discover (TMDB search, trending, add to watchlist)
 - Library
-- Add
-- Search
-- Settings
+- Lists
+- Profile
+
+## TMDB API key
+
+The GitHub Pages build does not bake in a TMDB API key (it's a static, single-bundle deploy with no server-side secret). On first use, enter a TMDB v3 API key under Profile > TMDB API Key — it's stored in the browser's local storage.
 
 ## Deployment
 
-Use GitHub Pages with the included workflow under `.github/workflows/deploy.yml`.
+Use GitHub Pages with the included workflow under `.github/workflows/deploy.yml`. Pushing to `main` builds and deploys automatically.

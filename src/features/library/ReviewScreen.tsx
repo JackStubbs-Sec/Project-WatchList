@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MediaLogo } from "../../components/icons";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { useWatchStore } from "../../store/useWatchStore";
+import { isFavorite, isRecommended, withTag } from "../../lib/entryTags";
 
-const MAX_REVIEW_CHARS = 500;
+const MAX_NOTES_CHARS = 500;
 
 export function ReviewScreen() {
   const { entryId } = useParams<{ entryId: string }>();
@@ -14,9 +16,9 @@ export function ReviewScreen() {
   const entry = useMemo(() => entries.find((item) => item.id === entryId), [entries, entryId]);
 
   const [rating, setRating] = useState<number>(entry?.rating ? Math.round(entry.rating) : 0);
-  const [isRecommended, setIsRecommended] = useState<boolean>(entry?.isRecommended ?? true);
-  const [isFavorite, setIsFavorite] = useState<boolean>(entry?.isFavorite ?? true);
-  const [review, setReview] = useState(entry?.review ?? "");
+  const [recommended, setRecommended] = useState<boolean>(entry ? isRecommended(entry) : true);
+  const [favorite, setFavorite] = useState<boolean>(entry ? isFavorite(entry) : true);
+  const [notes, setNotes] = useState(entry?.notes ?? "");
 
   function goBack() {
     if (window.history.length > 1) {
@@ -42,11 +44,13 @@ export function ReviewScreen() {
   const currentEntry = entry;
 
   async function onSave() {
+    let tags = withTag(currentEntry.tags, "recommended", recommended);
+    tags = withTag(tags, "favorite", favorite);
+
     await updateEntry(currentEntry.id, {
       rating: rating > 0 ? rating : undefined,
-      isRecommended,
-      isFavorite,
-      review: review.trim() ? review.trim() : undefined,
+      tags,
+      notes: notes.trim() ? notes.trim() : undefined,
       updatedAt: new Date().toISOString()
     });
     navigate(`/library/${currentEntry.id}`);
@@ -55,21 +59,7 @@ export function ReviewScreen() {
   return (
     <main>
       <section className="row">
-        <button
-          type="button"
-          aria-label="Close review"
-          onClick={goBack}
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "999px",
-            border: "1px solid rgba(14,22,38,0.15)",
-            background: "transparent",
-            color: "var(--muted)",
-            fontSize: "1.1rem",
-            cursor: "pointer"
-          }}
-        >
+        <button type="button" aria-label="Close review" onClick={goBack} className="icon-btn">
           ✕
         </button>
         <button
@@ -83,20 +73,20 @@ export function ReviewScreen() {
 
       <section style={{ display: "grid", gap: "4px" }}>
         <h1 className="screen-title" style={{ marginBottom: 0 }}>Review</h1>
-        <p style={{ color: "var(--muted)" }}>How was it?</p>
+        <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>How was it?</p>
       </section>
 
-      <section style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <MediaLogo type={currentEntry.type} size="small" tone={currentEntry.type === "series" ? "purple" : "red"} />
+      <section style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <MediaLogo type={currentEntry.type} size="small" tone={currentEntry.type === "tv" ? "purple" : "red"} />
         <div>
-          <p style={{ fontSize: "2rem", fontWeight: 700, lineHeight: 1 }}>{currentEntry.title}</p>
-          <p style={{ color: "var(--muted)", marginTop: "4px" }}>{currentEntry.type === "movie" ? "Movie" : "TV Series"}</p>
+          <p style={{ fontSize: "1.4rem", fontWeight: 700, lineHeight: 1.1 }}>{currentEntry.title}</p>
+          <p style={{ color: "var(--muted)", marginTop: "3px", fontSize: "0.82rem" }}>{currentEntry.type === "movie" ? "Movie" : "TV Series"}</p>
         </div>
       </section>
 
-      <section className="stack" style={{ gap: "10px" }}>
-        <p style={{ fontWeight: 650 }}>Your Rating</p>
-        <div style={{ display: "flex", gap: "8px" }}>
+      <section className="stack" style={{ gap: "8px" }}>
+        <p style={{ fontWeight: 650, fontSize: "0.88rem" }}>Your Rating</p>
+        <div style={{ display: "flex", gap: "6px" }}>
           {Array.from({ length: 5 }, (_, index) => {
             const star = index + 1;
             const active = star <= rating;
@@ -108,8 +98,8 @@ export function ReviewScreen() {
                 style={{
                   border: "none",
                   background: "transparent",
-                  fontSize: "2.35rem",
-                  color: active ? "#0a84ff" : "#8190a8",
+                  fontSize: "1.8rem",
+                  color: active ? "var(--accent-secondary)" : "var(--muted)",
                   cursor: "pointer",
                   padding: 0,
                   lineHeight: 1
@@ -122,74 +112,55 @@ export function ReviewScreen() {
         </div>
       </section>
 
-      <section className="stack" style={{ gap: "10px" }}>
-        <p style={{ fontWeight: 650 }}>Would you recommend it?</p>
-        <div style={segmentWrapStyle}>
-          <button type="button" onClick={() => setIsRecommended(true)} style={{ ...segmentStyle, ...(isRecommended ? segmentActiveStyle : {}) }}>
-            👍 Yes
-          </button>
-          <button type="button" onClick={() => setIsRecommended(false)} style={{ ...segmentStyle, ...(!isRecommended ? segmentActiveStyle : {}) }}>
-            👎 No
-          </button>
-        </div>
+      <section className="stack" style={{ gap: "8px" }}>
+        <p style={{ fontWeight: 650, fontSize: "0.88rem" }}>Would you recommend it?</p>
+        <SegmentedControl
+          ariaLabel="Would you recommend it?"
+          value={recommended ? "yes" : "no"}
+          onChange={(value) => setRecommended(value === "yes")}
+          options={[
+            { value: "yes", label: "👍 Yes" },
+            { value: "no", label: "👎 No" }
+          ]}
+        />
       </section>
 
-      <section className="stack" style={{ gap: "10px" }}>
-        <p style={{ fontWeight: 650 }}>Favourite?</p>
-        <div style={segmentWrapStyle}>
-          <button type="button" onClick={() => setIsFavorite(true)} style={{ ...segmentStyle, ...(isFavorite ? segmentActiveStyle : {}) }}>
-            ❤ Yes
-          </button>
-          <button type="button" onClick={() => setIsFavorite(false)} style={{ ...segmentStyle, ...(!isFavorite ? segmentActiveStyle : {}) }}>
-            ♡ No
-          </button>
-        </div>
+      <section className="stack" style={{ gap: "8px" }}>
+        <p style={{ fontWeight: 650, fontSize: "0.88rem" }}>Favourite?</p>
+        <SegmentedControl
+          ariaLabel="Favourite?"
+          value={favorite ? "yes" : "no"}
+          onChange={(value) => setFavorite(value === "yes")}
+          options={[
+            { value: "yes", label: "❤ Yes" },
+            { value: "no", label: "♡ No" }
+          ]}
+        />
       </section>
 
-      <section className="stack" style={{ gap: "10px" }}>
-        <p style={{ fontWeight: 650 }}>Your Review (optional)</p>
+      <section className="stack" style={{ gap: "8px" }}>
+        <p style={{ fontWeight: 650, fontSize: "0.88rem" }}>Your Notes (optional)</p>
         <div className="card" style={{ padding: "0" }}>
           <textarea
-            value={review}
-            onChange={(event) => setReview(event.target.value.slice(0, MAX_REVIEW_CHARS))}
-            rows={5}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value.slice(0, MAX_NOTES_CHARS))}
+            rows={4}
             style={{
               width: "100%",
               border: "none",
               background: "transparent",
               color: "var(--fg)",
               resize: "none",
-              padding: "14px"
+              padding: "11px",
+              fontSize: "0.88rem"
             }}
             placeholder="Share your thoughts"
           />
-          <p style={{ textAlign: "right", color: "var(--muted)", fontSize: "0.8rem", padding: "0 12px 10px" }}>
-            {review.length}/{MAX_REVIEW_CHARS}
+          <p style={{ textAlign: "right", color: "var(--muted)", fontSize: "0.72rem", padding: "0 10px 8px" }}>
+            {notes.length}/{MAX_NOTES_CHARS}
           </p>
         </div>
       </section>
     </main>
   );
 }
-
-const segmentWrapStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "8px"
-};
-
-const segmentStyle: React.CSSProperties = {
-  borderRadius: "12px",
-  border: "1px solid var(--input-border)",
-  background: "var(--input-bg)",
-  color: "var(--text-strong)",
-  padding: "12px",
-  fontWeight: 650,
-  cursor: "pointer"
-};
-
-const segmentActiveStyle: React.CSSProperties = {
-  background: "var(--accent)",
-  color: "var(--text-inverse)",
-  borderColor: "transparent"
-};

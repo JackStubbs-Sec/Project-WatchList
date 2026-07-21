@@ -102,7 +102,7 @@ npm run build
 ```
 
 - For viewport bug reports, capture evidence by checking page state and widths (for example compare `clientWidth` vs `scrollWidth`)
-- Treat iPhone viewport behavior as release-blocking for Home, Library, Detail, Add, Search, and Settings screens
+- Treat iPhone viewport behavior as release-blocking for Home, Discover, Library, Detail, Lists, and Profile screens
 
 ## Expectations For Future Chats
 

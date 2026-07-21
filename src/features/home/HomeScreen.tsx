@@ -1,175 +1,313 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWatchStore } from "../../store/useWatchStore";
-import { MediaLogo, PlatformLogo, ShuffleLogo, platformLabel } from "../../components/icons";
+import { AvailableOn } from "../../components/AvailableOn";
+import { MediaLogo } from "../../components/icons";
+import { isFavorite, withTag } from "../../lib/entryTags";
+import { getInitials, getProfileName } from "../../lib/profile";
+import { getRegion } from "../../lib/region";
+import { getTmdbTitleDetail, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
+import type { WatchEntry } from "../../types/watch";
 
 function greetingByHour(date: Date) {
   const hour = date.getHours();
   if (hour < 12) return "Good Morning";
-  if (hour < 18) return "Good Day";
-  return "Good Night";
+  if (hour < 18) return "Good Afternoon";
+  return "Good Evening";
 }
 
-function recommendationMetaByHour(date: Date) {
-  const hour = date.getHours();
+function timeAgo(isoDate?: string) {
+  if (!isoDate) return "recently";
+  const deltaDays = Math.max(1, Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000));
+  if (deltaDays < 7) return `${deltaDays} day${deltaDays > 1 ? "s" : ""} ago`;
+  const weeks = Math.floor(deltaDays / 7);
+  if (weeks < 5) return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+  const months = Math.floor(deltaDays / 30);
+  return `${months} month${months > 1 ? "s" : ""} ago`;
+}
 
-  if (hour < 12) {
-    return {
-      title: "This Morning's Recommendation",
-      subtitle: "Start your morning with something great.",
-      actionLine1: "Pick this",
-      actionLine2: "morning's watch"
-    };
-  }
+function watchedEpisodeCount(entry: WatchEntry) {
+  return entry.episodeProgress.filter((row) => row.watched).length;
+}
 
-  if (hour < 18) {
-    return {
-      title: "Today's Recommendation",
-      subtitle: "Find something for your day.",
-      actionLine1: "Pick today's",
-      actionLine2: "watch"
-    };
-  }
-
-  return {
-    title: "Tonight's Recommendation",
-    subtitle: "Settle in with a great evening pick.",
-    actionLine1: "Pick tonight's",
-    actionLine2: "watch"
-  };
+function currentSeason(entry: WatchEntry): number | undefined {
+  if (!entry.episodeProgress.length) return undefined;
+  return entry.episodeProgress[entry.episodeProgress.length - 1].season;
 }
 
 export function HomeScreen() {
   const navigate = useNavigate();
   const entries = useWatchStore((state) => state.entries);
+  const updateEntry = useWatchStore((state) => state.updateEntry);
+  const upsertEntry = useWatchStore((state) => state.upsertEntry);
+  const tonight = useWatchStore((state) => state.tonight);
+  const tonightReasoning = useWatchStore((state) => state.tonightReasoning);
+  const tonightLoading = useWatchStore((state) => state.tonightLoading);
+  const tonightError = useWatchStore((state) => state.tonightError);
   const rerollTonight = useWatchStore((state) => state.rerollTonight);
+
+  const [profileName] = useState(getProfileName());
+  const [tonightProviders, setTonightProviders] = useState<WatchProviders | undefined>(undefined);
+  const [tonightProvidersLoading, setTonightProvidersLoading] = useState(false);
+  const [addingToWatchlist, setAddingToWatchlist] = useState(false);
+  const [addError, setAddError] = useState<string | undefined>(undefined);
+
   const now = new Date();
   const greeting = greetingByHour(now);
-  const recommendationMeta = recommendationMetaByHour(now);
-  const recentlyAdded = entries.slice(0, 4);
-  const continueWatching = entries.find((entry) => entry.status === "watching");
-  const recentlyWatched = entries.filter((entry) => entry.status === "completed").slice(0, 2);
+  const continuing = entries.filter((entry) => entry.status === "watching" && entry.type === "tv");
+  const recentlyAdded = entries.slice(0, 6);
 
-  function getSeasonProgressPercent(episode?: number) {
-    if (!episode) return 0;
-    return Math.min(Math.round((episode / 10) * 100), 100);
+  useEffect(() => {
+    if (!tonight) {
+      void rerollTonight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof tonight?.tmdbId !== "number") {
+      setTonightProviders(undefined);
+      return;
+    }
+    let cancelled = false;
+    setTonightProvidersLoading(true);
+    getWatchProviders(tonight.tmdbId, tonight.mediaType, getRegion())
+      .then((result) => {
+        if (!cancelled) setTonightProviders(result);
+      })
+      .catch(() => {
+        if (!cancelled) setTonightProviders(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setTonightProvidersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tonight?.tmdbId, tonight?.mediaType]);
+
+  async function onToggleFavorite(entry: WatchEntry, event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    await updateEntry(entry.id, { tags: withTag(entry.tags, "favorite", !isFavorite(entry)) });
   }
 
-  function ratingToStars(rating?: number) {
-    if (!rating) return "☆☆☆☆☆";
-    const rounded = Math.round(rating);
-    return `${"★".repeat(rounded)}${"☆".repeat(5 - rounded)}`;
+  function handleReroll() {
+    void rerollTonight();
   }
 
-  function timeAgo(isoDate?: string) {
-    if (!isoDate) return "Watched recently";
-    const deltaDays = Math.max(1, Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000));
-    if (deltaDays < 7) return `Watched ${deltaDays} day${deltaDays > 1 ? "s" : ""} ago`;
-    const weeks = Math.floor(deltaDays / 7);
-    if (weeks < 5) return `Watched ${weeks} week${weeks > 1 ? "s" : ""} ago`;
-    const months = Math.floor(deltaDays / 30);
-    return `Watched ${months} month${months > 1 ? "s" : ""} ago`;
-  }
+  async function onAddToWatchlist() {
+    if (!tonight) return;
 
-  function handlePick() {
-    rerollTonight();
-    navigate("/pick");
+    const existing = entries.find((entry) => entry.tmdbId === tonight.tmdbId && entry.type === tonight.mediaType);
+    if (existing) {
+      navigate(`/library/${existing.id}`);
+      return;
+    }
+
+    setAddingToWatchlist(true);
+    setAddError(undefined);
+    try {
+      const detail = await getTmdbTitleDetail(tonight.tmdbId, tonight.mediaType);
+      const entryId = await upsertEntry({ title: detail, status: "want_to_watch" });
+      navigate(`/library/${entryId}`);
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Couldn't add this to your watchlist.");
+    } finally {
+      setAddingToWatchlist(false);
+    }
   }
 
   return (
-    <main>
-      <section className="stack" style={{ gap: "6px" }}>
-        <h1 style={{ fontSize: "2.1rem", marginBottom: 0 }}>{`${greeting} 👋`}</h1>
-        <p style={{ color: "var(--muted)" }}>Here&apos;s your watch overview</p>
+    <main style={homeMainStyle}>
+      <section style={headerRowStyle}>
+        <div>
+          <h1 style={{ fontSize: "1.42rem", marginBottom: "3px", letterSpacing: "-0.02em" }}>{`${greeting}${profileName.trim() ? `, ${profileName.trim()}` : ""} 👋`}</h1>
+          <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Here&apos;s what&apos;s happening in your world</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={bellStyle} aria-hidden="true">
+            🔔
+            <span style={notificationDotStyle} />
+          </span>
+          <Link to="/profile" style={avatarStyle}>
+            {getInitials(profileName)}
+          </Link>
+        </div>
       </section>
 
-      <section className="stack">
+      <section style={sectionStyle}>
         <div className="row">
-          <h2 className="section-title" style={{ marginBottom: 0 }}>Continue Watching</h2>
-          <Link to="/library" className="subtle-link">See All</Link>
+          <h2 style={sectionTitleStyle}>▶️ Pick up where you left off</h2>
+          <Link to="/library" className="subtle-link" style={{ fontSize: "0.78rem" }}>View all</Link>
         </div>
-        {continueWatching ? (
-          <Link to={`/library/${continueWatching.id}`} className="card" style={{ display: "flex", gap: "14px", alignItems: "center", padding: "12px" }}>
-            <MediaLogo type={continueWatching.type} size="large" tone="purple" />
-            <div style={{ flex: 1 }}>
-              <p style={{ fontWeight: 750, fontSize: "1.05rem", marginBottom: "2px" }}>{continueWatching.title}</p>
-              {continueWatching.platform ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                  <PlatformLogo platform={continueWatching.platform} compact />
-                  <span style={{ color: "var(--text-strong)", fontSize: "0.84rem", fontWeight: 650 }}>{platformLabel(continueWatching.platform)}</span>
-                </div>
-              ) : null}
-              <p style={{ color: "var(--muted)", marginBottom: "6px" }}>
-                {continueWatching.type === "series" ? "TV Series" : "Movie"}
-                {continueWatching.type === "series" && continueWatching.season
-                  ? ` • Season ${continueWatching.season}${continueWatching.totalSeasons ? ` of ${continueWatching.totalSeasons}` : ""}`
-                  : ""}
-              </p>
-              {continueWatching.type === "series" ? (
-                <>
-                  <p style={{ color: "var(--text-strong)", marginBottom: "8px" }}>
-                    Episode {continueWatching.episode ?? "-"}
-                  </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "10px" }}>
-                    <div style={{ height: "8px", borderRadius: "999px", background: "var(--divider)", overflow: "hidden" }}>
-                      <div style={{ width: `${getSeasonProgressPercent(continueWatching.episode)}%`, height: "100%", background: "var(--accent)" }} />
+        {continuing.length ? (
+          <div style={continueRailStyle}>
+            {continuing.map((entry) => {
+              const watched = watchedEpisodeCount(entry);
+              const season = currentSeason(entry);
+              const percent = entry.totalEpisodes ? Math.min(Math.round((watched / entry.totalEpisodes) * 100), 100) : 0;
+              return (
+                <div key={entry.id} style={continueCardStyle}>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={continuePosterWrapStyle}>
+                      {entry.posterUrl ? (
+                        <img src={entry.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <MediaLogo type={entry.type} size="medium" tone="purple" />
+                      )}
                     </div>
-                    <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
-                      {continueWatching.episode ?? 0} of 10 episodes
-                    </p>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 760, fontSize: "1.04rem", marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.title}</p>
+                      {season ? <p style={{ color: "var(--accent)", fontWeight: 650, fontSize: "0.8rem", marginBottom: "3px" }}>Season {season}</p> : null}
+                      {entry.totalEpisodes ? (
+                        <>
+                          <p style={{ color: "var(--text-strong)", fontSize: "0.84rem", marginBottom: "6px" }}>
+                            {watched < entry.totalEpisodes ? `Episode ${watched + 1} next` : "Season complete"}
+                          </p>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: "6px" }}>
+                            <div style={{ height: "5px", borderRadius: "999px", background: "var(--divider)", overflow: "hidden" }}>
+                              <div style={{ width: `${percent}%`, height: "100%", background: "var(--accent)" }} />
+                            </div>
+                            <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>
+                              {watched} of {entry.totalEpisodes}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{watched ? `${watched} episodes watched` : "Not tracked yet"}</p>
+                      )}
+                      <p style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: "5px" }}>
+                        <span style={{ marginRight: "3px" }}>📅</span>
+                        Last watched {timeAgo(entry.watchHistory[0]?.watchedDate ?? entry.updatedAt)}
+                      </p>
+                    </div>
                   </div>
-                </>
-              ) : (
-                <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>No episodic progress for films</p>
-              )}
-            </div>
-          </Link>
+                  <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/library/${entry.id}`)}
+                      className="btn btn-primary"
+                      style={{ flex: 1, fontSize: "0.85rem", padding: "10px" }}
+                    >
+                      ▶ Resume Tracking
+                    </button>
+                    <Link to={`/library/${entry.id}`} aria-label="More options" className="icon-btn" style={{ width: "36px" }}>
+                      ⋯
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <p style={{ color: "var(--muted)" }}>Nothing in progress yet.</p>
         )}
       </section>
 
-      <section className="stack">
-        <h2 className="section-title" style={{ marginBottom: 0 }}>{`✨ ${recommendationMeta.title}`}</h2>
-        <p style={{ color: "var(--muted)", marginTop: "-6px" }}>{recommendationMeta.subtitle}</p>
-        <button type="button" onClick={handlePick} style={pickButtonStyle}>
-          <ShuffleLogo />
-          <div style={{ display: "grid", gap: "2px", textAlign: "left" }}>
-            <span style={{ fontSize: "1.55rem", lineHeight: 0.9, fontWeight: 700 }}>{recommendationMeta.actionLine1}</span>
-            <span style={{ fontSize: "1.55rem", lineHeight: 0.9, fontWeight: 700 }}>{recommendationMeta.actionLine2}</span>
-            <span style={{ color: "var(--muted)", fontSize: "1.05rem" }}>I&apos;ll choose for you</span>
+      <section style={sectionStyle}>
+        <div className="row">
+          <h2 style={sectionTitleStyle}>⭐ Tonight&apos;s recommendation</h2>
+          <span style={{ color: "var(--accent-secondary)", fontSize: "0.72rem", fontWeight: 650, flexShrink: 0 }}>New pick every night</span>
+        </div>
+        {tonight ? (
+          <div className="card" style={{ ...tonightCardStyle, opacity: tonightLoading ? 0.6 : 1 }}>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div style={tonightPosterWrapStyle}>
+                {tonight.posterUrl ? (
+                  <img src={tonight.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <MediaLogo type={tonight.mediaType} size="medium" tone="purple" />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 760, fontSize: "1.08rem", lineHeight: 1.2 }}>{tonight.title}</p>
+                <p style={{ color: "var(--muted)", fontSize: "0.8rem", marginTop: "2px" }}>
+                  {tonight.year ?? ""}
+                  {tonight.runtimeMinutes ? ` • ${tonight.runtimeMinutes}m` : ""}
+                  {tonight.mediaType === "tv" ? " • TV Series" : ""}
+                </p>
+                {tonight.genres.length ? (
+                  <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", marginTop: "7px" }}>
+                    {tonight.genres.slice(0, 3).map((genre) => (
+                      <span key={genre} className="chip">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {typeof tonightReasoning?.predictedRating === "number" ? (
+                <div style={predictedBadgeStyle}>
+                  <span style={{ fontSize: "1.05rem" }}>★ {tonightReasoning.predictedRating.toFixed(1)}</span>
+                  <span style={{ color: "var(--muted)", fontSize: "0.6rem", textAlign: "center", lineHeight: 1.2 }}>Your predicted rating</span>
+                </div>
+              ) : null}
+            </div>
+
+            {tonightReasoning?.basedOnTitles.length ? (
+              <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>
+                Because you loved{" "}
+                <span style={{ color: "var(--accent-secondary)", fontWeight: 650 }}>{tonightReasoning.basedOnTitles.join(" • ")}</span>
+              </p>
+            ) : (
+              <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Trending now, picked to match your taste.</p>
+            )}
+
+            {tonight.synopsis ? (
+              <p style={{ color: "var(--muted)", fontSize: "0.78rem", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {tonight.synopsis}
+              </p>
+            ) : null}
+
+            {addError ? <p style={{ color: "var(--danger)", fontSize: "0.78rem" }}>{addError}</p> : null}
+
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "8px" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <AvailableOn providers={tonightProviders} loading={tonightProvidersLoading} compact limit={3} />
+              </div>
+              <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                <button type="button" onClick={handleReroll} disabled={tonightLoading} aria-label="Reroll" className="icon-btn">
+                  ↻
+                </button>
+                <button type="button" onClick={() => void onAddToWatchlist()} disabled={addingToWatchlist} className="btn btn-primary" style={{ fontSize: "0.82rem", padding: "9px 14px" }}>
+                  {addingToWatchlist ? "Adding..." : "+ Add"}
+                </button>
+              </div>
+            </div>
           </div>
-          <span style={{ marginLeft: "auto", color: "var(--muted)", fontSize: "1.4rem" }}>›</span>
-        </button>
+        ) : (
+          <p style={{ color: "var(--muted)" }}>
+            {tonightLoading ? "Finding something for you..." : tonightError ?? "No recommendation available right now."}
+          </p>
+        )}
       </section>
 
-      <section className="stack">
+      <section style={sectionStyle}>
         <div className="row">
-          <h2 className="section-title" style={{ marginBottom: 0 }}>Recently Added</h2>
-          <Link to="/library" className="subtle-link">See All</Link>
+          <h2 style={sectionTitleStyle}>➕ Recently added</h2>
+          <Link to="/library" className="subtle-link" style={{ fontSize: "0.78rem" }}>View all</Link>
         </div>
         {recentlyAdded.length ? (
           <div style={recentlyAddedRailStyle}>
             {recentlyAdded.map((entry) => (
               <Link key={entry.id} to={`/library/${entry.id}`} style={recentlyAddedCardStyle}>
-                <div style={recentlyAddedTopStyle}>
-                  <div style={recentlyAddedMediaWrapStyle}>
-                    {entry.platform ? <PlatformLogo platform={entry.platform} /> : <span style={recentlyAddedEmptyPlatformStyle}>?</span>}
-                  </div>
-                  <div style={{ display: "grid", placeItems: "start end" }}>
-                    <span style={{ color: "var(--muted)", fontSize: "0.96rem", lineHeight: 1 }}>›</span>
-                  </div>
+                <div style={recentlyAddedPosterWrapStyle}>
+                  {entry.posterUrl ? (
+                    <img src={entry.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <MediaLogo type={entry.type} size="medium" tone={entry.type === "tv" ? "purple" : "red"} />
+                  )}
+                  <button type="button" onClick={(event) => void onToggleFavorite(entry, event)} style={heartButtonStyle} aria-label="Toggle favourite">
+                    {isFavorite(entry) ? "❤" : "♡"}
+                  </button>
                 </div>
-                <div style={{ display: "grid", gap: "6px", minWidth: 0 }}>
-                  <div style={{ minHeight: "2.35em" }}>
-                    <p style={recentlyAddedTitleStyle}>{entry.title}</p>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0, flexWrap: "wrap" }}>
-                      <span style={recentlyAddedTypePillStyle}>{entry.type === "series" ? "TV" : "Film"}</span>
-                      <span style={{ ...recentlyAddedStatusPillStyle, ...(statusPillStyleByStatus(entry.status)) }}>{statusLabel(entry.status)}</span>
-                    </div>
-                  </div>
+                <p style={recentlyAddedTitleStyle}>{entry.title}</p>
+                <div className="row" style={{ marginTop: "0" }}>
+                  <span style={{ color: "var(--muted)", fontSize: "0.7rem" }}>{entry.year ?? ""}</span>
+                  {entry.rating ? (
+                    <span style={{ color: "#34c759", fontSize: "0.7rem", fontWeight: 650 }}>★ {entry.rating.toFixed(1)}</span>
+                  ) : null}
                 </div>
               </Link>
             ))}
@@ -178,76 +316,128 @@ export function HomeScreen() {
           <p style={{ color: "var(--muted)" }}>Your library is waiting for its first title.</p>
         )}
       </section>
-
-      <section className="stack">
-        <div className="row">
-          <h2 className="section-title" style={{ marginBottom: 0 }}>Recently Watched</h2>
-          <Link to="/library" className="subtle-link">See All</Link>
-        </div>
-        {recentlyWatched.length ? (
-          <div style={{ display: "grid", gap: "10px" }}>
-            {recentlyWatched.map((entry) => (
-              <Link key={entry.id} to={`/library/${entry.id}`} style={wideCardStyle}>
-                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <MediaLogo type={entry.type} size="medium" tone={entry.type === "series" ? "green" : "blue"} />
-                  <div>
-                    <p style={{ fontWeight: 700 }}>{entry.title}</p>
-                    {entry.platform ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
-                        <PlatformLogo platform={entry.platform} compact />
-                        <span style={{ color: "var(--text-strong)", fontSize: "0.84rem", fontWeight: 650 }}>{platformLabel(entry.platform)}</span>
-                      </div>
-                    ) : null}
-                    <p style={{ color: "#0a84ff", marginTop: "2px" }}>{ratingToStars(entry.rating)}</p>
-                    <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "2px" }}>{timeAgo(entry.lastWatchedAt ?? entry.updatedAt)}</p>
-                  </div>
-                </div>
-                <p style={{ color: "var(--muted)", fontSize: "1.35rem" }}>›</p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p style={{ color: "var(--muted)" }}>Complete titles to build your journal history.</p>
-        )}
-      </section>
     </main>
   );
 }
 
-const pickButtonStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid var(--card-border)",
-  borderRadius: "14px",
-  background: "var(--card-bg)",
-  color: "var(--fg)",
-  padding: "12px",
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  textAlign: "left",
-  cursor: "pointer"
+const homeMainStyle: CSSProperties = {
+  gap: "14px",
+  paddingTop: "max(10px, env(safe-area-inset-top))"
 };
 
-const wideCardStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  borderRadius: "12px",
-  border: "1px solid var(--card-border)",
-  background: "var(--bg-panel)",
-  padding: "12px"
-};
-
-const recentlyAddedCardStyle: CSSProperties = {
-  flex: "0 0 clamp(108px, 29vw, 132px)",
+const sectionStyle: CSSProperties = {
   display: "grid",
-  gap: "8px",
+  gap: "7px"
+};
+
+const sectionTitleStyle: CSSProperties = {
+  fontSize: "0.92rem",
+  fontWeight: 700,
+  marginBottom: 0
+};
+
+const headerRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "space-between",
+  gap: "8px"
+};
+
+const bellStyle: CSSProperties = {
+  position: "relative",
+  width: "30px",
+  height: "30px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "var(--input-bg)",
+  border: "1px solid var(--card-border)",
+  fontSize: "0.84rem"
+};
+
+const notificationDotStyle: CSSProperties = {
+  position: "absolute",
+  top: "-1px",
+  right: "-1px",
+  width: "9px",
+  height: "9px",
+  borderRadius: "999px",
+  background: "var(--accent)",
+  border: "1.5px solid var(--bg)"
+};
+
+const avatarStyle: CSSProperties = {
+  width: "30px",
+  height: "30px",
+  borderRadius: "999px",
+  display: "grid",
+  placeItems: "center",
+  background: "var(--accent)",
+  color: "var(--text-inverse)",
+  fontWeight: 700,
+  fontSize: "0.68rem",
+  border: "2px solid var(--accent-soft)"
+};
+
+const continueRailStyle: CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  overflowX: "auto",
+  overscrollBehaviorX: "contain",
+  paddingBottom: "2px"
+};
+
+const continueCardStyle: CSSProperties = {
+  flex: "0 0 min(300px, 86vw)",
   borderRadius: "16px",
   border: "1px solid var(--card-border)",
-  background: "linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 88%, transparent), var(--card-bg))",
-  padding: "9px",
-  minHeight: "112px",
-  alignContent: "space-between"
+  background: "var(--card-bg)",
+  padding: "13px"
+};
+
+const continuePosterWrapStyle: CSSProperties = {
+  width: "74px",
+  height: "104px",
+  borderRadius: "11px",
+  overflow: "hidden",
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "var(--input-bg)"
+};
+
+const tonightCardStyle: CSSProperties = {
+  display: "grid",
+  gap: "11px",
+  padding: "15px",
+  borderColor: "color-mix(in srgb, var(--accent-secondary) 35%, var(--card-border))",
+  background: "linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 12%, transparent), var(--bg-panel))",
+  transition: "opacity 0.2s ease"
+};
+
+const tonightPosterWrapStyle: CSSProperties = {
+  width: "80px",
+  height: "114px",
+  borderRadius: "11px",
+  overflow: "hidden",
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  background: "var(--input-bg)"
+};
+
+const predictedBadgeStyle: CSSProperties = {
+  display: "grid",
+  justifyItems: "center",
+  gap: "2px",
+  padding: "8px 9px",
+  borderRadius: "11px",
+  background: "var(--input-bg)",
+  border: "1px solid var(--card-border)",
+  color: "var(--accent-secondary)",
+  fontWeight: 700,
+  height: "fit-content",
+  maxWidth: "76px"
 };
 
 const recentlyAddedRailStyle: CSSProperties = {
@@ -255,32 +445,46 @@ const recentlyAddedRailStyle: CSSProperties = {
   gap: "10px",
   overflowX: "auto",
   overscrollBehaviorX: "contain",
-  paddingBottom: "2px",
-  maxWidth: "100%",
-  minWidth: 0
+  paddingBottom: "2px"
 };
 
-const recentlyAddedTopStyle: CSSProperties = {
+const recentlyAddedCardStyle: CSSProperties = {
+  flex: "0 0 clamp(78px, 23vw, 96px)",
   display: "grid",
-  gridTemplateColumns: "1fr auto",
-  alignItems: "center",
-  gap: "8px"
+  gap: "6px"
 };
 
-const recentlyAddedMediaWrapStyle: CSSProperties = {
-  width: "52px",
-  height: "52px",
-  borderRadius: "13px",
+const recentlyAddedPosterWrapStyle: CSSProperties = {
+  position: "relative",
+  aspectRatio: "2 / 3",
+  borderRadius: "12px",
+  overflow: "hidden",
+  background: "var(--input-bg)",
+  border: "1px solid var(--card-border)",
+  display: "grid",
+  placeItems: "center"
+};
+
+const heartButtonStyle: CSSProperties = {
+  position: "absolute",
+  top: "5px",
+  right: "5px",
+  width: "24px",
+  height: "24px",
+  borderRadius: "999px",
+  border: "none",
+  background: "rgba(10,10,16,0.55)",
+  color: "#fff",
   display: "grid",
   placeItems: "center",
-  background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))",
-  border: "1px solid var(--card-border)"
+  fontSize: "0.82rem",
+  minHeight: "unset"
 };
 
 const recentlyAddedTitleStyle: CSSProperties = {
   color: "var(--text-strong)",
-  fontSize: "0.9rem",
-  fontWeight: 760,
+  fontSize: "0.8rem",
+  fontWeight: 720,
   lineHeight: 1.2,
   display: "-webkit-box",
   WebkitLineClamp: 2,
@@ -288,69 +492,3 @@ const recentlyAddedTitleStyle: CSSProperties = {
   overflow: "hidden",
   overflowWrap: "anywhere"
 };
-
-const recentlyAddedEmptyPlatformStyle: CSSProperties = {
-  width: "28px",
-  height: "28px",
-  borderRadius: "8px",
-  border: "1px dashed var(--input-border)",
-  color: "var(--muted)",
-  display: "grid",
-  placeItems: "center",
-  fontSize: "0.72rem",
-  fontWeight: 700
-};
-
-const recentlyAddedTypePillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "24px",
-  padding: "0 8px",
-  borderRadius: "999px",
-  background: "var(--input-bg)",
-  border: "1px solid var(--input-border)",
-  color: "var(--muted)",
-  fontSize: "0.74rem",
-  fontWeight: 700,
-  letterSpacing: "0.02em"
-};
-
-const recentlyAddedStatusPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "24px",
-  padding: "0 8px",
-  borderRadius: "999px",
-  border: "1px solid transparent",
-  fontSize: "0.74rem",
-  fontWeight: 700,
-  letterSpacing: "0.02em"
-};
-
-function statusLabel(status: "watchlist" | "watching" | "completed" | "dropped") {
-  switch (status) {
-    case "watching":
-      return "Watching";
-    case "completed":
-      return "Completed";
-    case "dropped":
-      return "Dropped";
-    default:
-      return "Watchlist";
-  }
-}
-
-function statusPillStyleByStatus(status: "watchlist" | "watching" | "completed" | "dropped"): CSSProperties {
-  switch (status) {
-    case "watching":
-      return { background: "rgba(233, 180, 50, 0.14)", color: "#a46b00", borderColor: "rgba(233, 180, 50, 0.28)" };
-    case "completed":
-      return { background: "rgba(138, 211, 109, 0.14)", color: "#397a23", borderColor: "rgba(138, 211, 109, 0.28)" };
-    case "dropped":
-      return { background: "rgba(136, 146, 168, 0.16)", color: "#5a6578", borderColor: "rgba(136, 146, 168, 0.28)" };
-    default:
-      return { background: "rgba(242, 95, 106, 0.12)", color: "#a22d39", borderColor: "rgba(242, 95, 106, 0.26)" };
-  }
-}

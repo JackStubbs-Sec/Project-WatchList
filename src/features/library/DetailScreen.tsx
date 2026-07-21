@@ -1,11 +1,16 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { AvailableOn } from "../../components/AvailableOn";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { EntryEditor } from "../../components/EntryEditor";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
-import { MediaLogo, PlatformLogo, platformLabel } from "../../components/icons";
+import { MediaLogo } from "../../components/icons";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
-import { streamingPlatforms, type StreamingPlatform, type WatchEntry, type WatchStatus, type WatchType } from "../../types/watch";
+import { isFavorite, isRecommended, withTag } from "../../lib/entryTags";
+import { getRegion } from "../../lib/region";
+import { getTmdbSimilar, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
+import type { TmdbSearchItem, WatchEntry, WatchStatus } from "../../types/watch";
 
 export function DetailScreen() {
   const { entryId } = useParams<{ entryId: string }>();
@@ -13,9 +18,14 @@ export function DetailScreen() {
   const entries = useWatchStore((state) => state.entries);
   const updateEntry = useWatchStore((state) => state.updateEntry);
   const removeEntry = useWatchStore((state) => state.removeEntry);
+  const addWatch = useWatchStore((state) => state.addWatch);
   const [editing, setEditing] = useState(false);
   const [useRecoveryEditor, setUseRecoveryEditor] = useState(false);
   const [editAttempt, setEditAttempt] = useState(0);
+  const [similar, setSimilar] = useState<TmdbSearchItem[]>([]);
+  const [providers, setProviders] = useState<WatchProviders | undefined>(undefined);
+  const [providersLoading, setProvidersLoading] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function enterEditMode() {
     setUseRecoveryEditor(false);
@@ -37,6 +47,41 @@ export function DetailScreen() {
   }
 
   const entry = useMemo(() => entries.find((item) => item.id === entryId), [entries, entryId]);
+  const tmdbId = entry?.tmdbId;
+  const mediaType = entry?.type;
+
+  useEffect(() => {
+    if (typeof tmdbId !== "number" || !mediaType) {
+      setSimilar([]);
+      setProviders(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    getTmdbSimilar(tmdbId, mediaType)
+      .then((result) => {
+        if (!cancelled) setSimilar(result);
+      })
+      .catch(() => {
+        if (!cancelled) setSimilar([]);
+      });
+
+    setProvidersLoading(true);
+    getWatchProviders(tmdbId, mediaType, getRegion())
+      .then((result) => {
+        if (!cancelled) setProviders(result);
+      })
+      .catch(() => {
+        if (!cancelled) setProviders(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setProvidersLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tmdbId, mediaType]);
 
   if (!entry) {
     return (
@@ -55,6 +100,7 @@ export function DetailScreen() {
   }
 
   const currentEntry = entry;
+  const watchedEpisodes = currentEntry.episodeProgress.filter((row) => row.watched).length;
 
   async function onSave(value: EntryEditorValue) {
     await updateEntry(currentEntry.id, {
@@ -65,40 +111,42 @@ export function DetailScreen() {
   }
 
   async function onDelete() {
-    const accepted = confirm("Delete this title from your journal?");
-    if (!accepted) return;
     await removeEntry(currentEntry.id);
     navigate("/library");
   }
 
   async function onToggleWatching() {
-    const now = new Date().toISOString();
-    const nextStatus = currentEntry.status === "watching" ? "watchlist" : "watching";
+    const nextStatus: WatchStatus = currentEntry.status === "watching" ? "want_to_watch" : "watching";
     await updateEntry(currentEntry.id, {
       status: nextStatus,
-      lastWatchedAt: nextStatus === "watching" ? now : undefined,
-      updatedAt: now
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  async function onMarkWatched() {
+    const now = new Date().toISOString();
+    await addWatch(currentEntry.id, now);
+    await updateEntry(currentEntry.id, { status: "watched", updatedAt: now });
+  }
+
+  async function onToggleFavorite() {
+    await updateEntry(currentEntry.id, {
+      tags: withTag(currentEntry.tags, "favorite", !isFavorite(currentEntry)),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  async function onToggleRecommended() {
+    await updateEntry(currentEntry.id, {
+      tags: withTag(currentEntry.tags, "recommended", !isRecommended(currentEntry)),
+      updatedAt: new Date().toISOString()
     });
   }
 
   return (
     <main>
       <section className="row" style={{ marginBottom: "4px" }}>
-        <button
-          type="button"
-          aria-label="Go back"
-          onClick={goBack}
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "999px",
-            border: "1px solid rgba(14,22,38,0.15)",
-            background: "transparent",
-            color: "var(--muted)",
-            fontSize: "1.1rem",
-            cursor: "pointer"
-          }}
-        >
+        <button type="button" aria-label="Go back" onClick={goBack} className="icon-btn">
           ←
         </button>
         <button
@@ -141,46 +189,79 @@ export function DetailScreen() {
         )
       ) : (
         <>
-          <section style={{ display: "grid", placeItems: "center", textAlign: "center", gap: "10px", marginTop: "2px" }}>
-            <MediaLogo type={entry.type} size="large" tone={entry.type === "series" ? "purple" : "red"} />
-            <h1 style={{ fontSize: "3rem", lineHeight: 1.1, margin: 0 }}>{entry.title}</h1>
-            <p style={{ color: "var(--muted)", fontSize: "1.15rem" }}>{entry.type === "movie" ? "Movie" : "TV Series"}</p>
-            {entry.platform ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
-                <PlatformLogo platform={entry.platform} compact />
-                <span style={{ color: "var(--text-strong)", fontWeight: 650 }}>{platformLabel(entry.platform)}</span>
-              </div>
-            ) : null}
+          <section style={{ display: "grid", placeItems: "center", textAlign: "center", gap: "8px", marginTop: "2px" }}>
+            {entry.posterUrl ? (
+              <img src={entry.posterUrl} alt="" style={{ width: "112px", borderRadius: "var(--radius-m)", boxShadow: "var(--shadow)" }} />
+            ) : (
+              <MediaLogo type={entry.type} size="large" tone={entry.type === "tv" ? "purple" : "red"} />
+            )}
+            <h1 style={{ fontSize: "1.5rem", lineHeight: 1.2, margin: 0 }}>{entry.title}</h1>
+            <p style={{ color: "var(--muted)", fontSize: "0.86rem" }}>
+              {entry.type === "movie" ? "Movie" : "TV Series"}
+              {entry.year ? ` • ${entry.year}` : ""}
+            </p>
+            {entry.genres.length ? <p style={{ color: "var(--muted)", fontSize: "0.86rem" }}>{entry.genres.join(", ")}</p> : null}
           </section>
 
-          <section style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-            <Link to={`/library/${entry.id}/review`} className="card" style={{ padding: "10px", textAlign: "center" }}>
-              <p style={{ color: "#0a84ff", letterSpacing: "1px" }}>{ratingToStars(entry.rating)}</p>
-              <p style={{ color: "var(--muted)", fontSize: "0.88rem", marginTop: "5px" }}>Your Rating</p>
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+            <Link to={`/library/${entry.id}/review`} className="card" style={{ padding: "8px", textAlign: "center" }}>
+              <p style={{ color: "var(--accent-secondary)", letterSpacing: "1px", fontSize: "0.85rem" }}>{ratingToStars(entry.rating)}</p>
+              <p style={{ color: "var(--muted)", fontSize: "0.74rem", marginTop: "4px" }}>Your Rating</p>
             </Link>
-            <Link to={`/library/${entry.id}/review`} className="card" style={{ padding: "10px", textAlign: "center" }}>
-              <p style={{ fontSize: "1.15rem" }}>❤</p>
-              <p style={{ color: entry.isFavorite ? "#f25769" : "var(--muted)", fontSize: "0.95rem", marginTop: "5px" }}>Favourite</p>
-            </Link>
-            <Link to={`/library/${entry.id}/review`} className="card" style={{ padding: "10px", textAlign: "center" }}>
-              <p style={{ fontSize: "1.15rem" }}>👍</p>
-              <p style={{ color: entry.isRecommended ? "#e8ba31" : "var(--muted)", fontSize: "0.95rem", marginTop: "5px" }}>Recommend</p>
-            </Link>
+            <button type="button" onClick={() => void onToggleFavorite()} className="card" style={{ padding: "8px", textAlign: "center", border: "1px solid var(--card-border)" }}>
+              <p style={{ fontSize: "0.95rem" }}>❤</p>
+              <p style={{ color: isFavorite(entry) ? "#f25769" : "var(--muted)", fontSize: "0.74rem", marginTop: "4px" }}>Favourite</p>
+            </button>
+            <button type="button" onClick={() => void onToggleRecommended()} className="card" style={{ padding: "8px", textAlign: "center", border: "1px solid var(--card-border)" }}>
+              <p style={{ fontSize: "0.95rem" }}>👍</p>
+              <p style={{ color: isRecommended(entry) ? "#e8ba31" : "var(--muted)", fontSize: "0.74rem", marginTop: "4px" }}>Recommend</p>
+            </button>
           </section>
 
           <section className="card" style={{ padding: "0", overflow: "hidden" }}>
-            <InfoRow icon="bookmark" label="Status" value={capitalize(entry.status)} accent={entry.status === "watchlist" ? "#e94e55" : undefined} />
+            <InfoRow icon="bookmark" label="Status" value={capitalize(entry.status.replaceAll("_", " "))} accent={entry.status === "want_to_watch" ? "var(--danger)" : undefined} />
             <InfoRow icon="calendar" label="Date Added" value={formatDate(entry.createdAt)} divider />
-            {entry.type === "series" ? (
+            {entry.type === "tv" ? (
               <InfoRow
                 icon="tv"
                 label="Progress"
-                value={`Season ${entry.season ?? "-"}${entry.totalSeasons ? ` of ${entry.totalSeasons}` : ""} • Episode ${entry.episode ?? "-"}`}
+                value={entry.totalEpisodes ? `${watchedEpisodes} of ${entry.totalEpisodes} episodes` : `${watchedEpisodes} episodes watched`}
                 divider
               />
             ) : null}
             <InfoRow icon="note" label="Notes" value={entry.notes || "No notes yet"} multiline />
           </section>
+
+          {entry.type === "tv" ? (
+            <Link to={`/library/${entry.id}/episodes`} className="btn btn-secondary btn-block">
+              📺 Track Episodes
+            </Link>
+          ) : null}
+
+          {typeof entry.tmdbId === "number" ? (
+            <section className="stack">
+              <h2 className="section-title" style={{ marginBottom: 0 }}>Available on</h2>
+              <AvailableOn providers={providers} loading={providersLoading} />
+            </section>
+          ) : null}
+
+          {similar.length ? (
+            <section className="stack">
+              <h2 className="section-title" style={{ marginBottom: 0 }}>More like this</h2>
+              <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "2px" }}>
+                {similar.slice(0, 8).map((item) => (
+                  <div key={`${item.mediaType}-${item.tmdbId}`} style={{ flex: "0 0 76px", display: "grid", gap: "4px" }}>
+                    <div style={{ width: "76px", height: "114px", borderRadius: "8px", overflow: "hidden", background: "var(--input-bg)" }}>
+                      {item.posterUrl ? <img src={item.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+                    </div>
+                    <p style={{ fontSize: "0.7rem", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      {item.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </>
       )}
 
@@ -189,35 +270,39 @@ export function DetailScreen() {
           <button
             type="button"
             onClick={() => void onToggleWatching()}
-            style={{
-              width: "100%",
-              border: "none",
-              borderRadius: "999px",
-              padding: "14px",
-              background: "var(--accent)",
-              color: "var(--text-inverse)",
-              fontWeight: 700,
-              marginBottom: "10px"
-            }}
+            className="btn btn-primary btn-block"
+            style={{ marginBottom: "10px" }}
           >
-            {entry.status === "watching" ? "Mark as Watchlist" : "Mark as Watching"}
+            {currentEntry.status === "watching" ? "Move to Want to Watch" : "Mark as Watching"}
           </button>
-          <button
-            type="button"
-            onClick={() => void onDelete()}
-            style={{
-              width: "100%",
-              border: "1px solid #7e3e3e",
-              borderRadius: "999px",
-              padding: "12px",
-              background: "#2b1515",
-              color: "#ffc6c6"
-            }}
-          >
+          {currentEntry.status !== "watched" ? (
+            <button
+              type="button"
+              onClick={() => void onMarkWatched()}
+              className="btn btn-secondary btn-block"
+              style={{ marginBottom: "10px" }}
+            >
+              Mark as Watched
+            </button>
+          ) : null}
+          <button type="button" onClick={() => setConfirmingDelete(true)} className="btn btn-destructive btn-block">
             Delete Title
           </button>
         </section>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Delete this title?"
+        message={`"${currentEntry.title}" will be removed from your journal. This can't be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          setConfirmingDelete(false);
+          void onDelete();
+        }}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </main>
   );
 }
@@ -238,9 +323,9 @@ function InfoRow({
   multiline?: boolean;
 }) {
   return (
-    <div style={{ padding: "14px 16px", borderBottom: divider ? "1px solid var(--divider)" : "none" }}>
+    <div style={{ padding: "10px 12px", borderBottom: divider ? "1px solid var(--divider)" : "none", fontSize: "0.86rem" }}>
       <div className="row" style={{ alignItems: multiline ? "flex-start" : "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-strong)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-strong)" }}>
           <InlineIcon type={icon} />
           <span>{label}</span>
         </div>
@@ -252,7 +337,7 @@ function InfoRow({
 
 function InlineIcon({ type }: { type: "bookmark" | "calendar" | "note" | "tv" }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       {type === "bookmark" ? <path d="M7 4h10v16l-5-3-5 3V4z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /> : null}
       {type === "calendar" ? (
         <>
@@ -300,11 +385,8 @@ function FallbackEditor({
   onCancel: () => void;
   onSubmit: (value: EntryEditorValue) => Promise<void>;
 }) {
-  const [title, setTitle] = useState(entry.title);
-  const [type, setType] = useState<WatchType>(entry.type === "series" ? "series" : "movie");
   const [status, setStatus] = useState<WatchStatus>(entry.status);
-  const [genre, setGenre] = useState(entry.genre ?? "");
-  const [platform, setPlatform] = useState<StreamingPlatform | "">(entry.platform ?? "");
+  const [rating, setRating] = useState<string>(entry.rating ? String(entry.rating) : "");
   const [notes, setNotes] = useState(entry.notes ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -316,44 +398,17 @@ function FallbackEditor({
       </div>
 
       <label style={fieldBlockStyle}>
-        <span style={fieldLabelStyle}>Title</span>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} style={fieldInputStyle} />
-      </label>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-        <label style={fieldBlockStyle}>
-          <span style={fieldLabelStyle}>Type</span>
-          <select value={type} onChange={(event) => setType(event.target.value as WatchType)} style={fieldInputStyle}>
-            <option value="movie">Movie</option>
-            <option value="series">TV Series</option>
-          </select>
-        </label>
-        <label style={fieldBlockStyle}>
-          <span style={fieldLabelStyle}>Status</span>
-          <select value={status} onChange={(event) => setStatus(event.target.value as WatchStatus)} style={fieldInputStyle}>
-            <option value="watchlist">Watchlist</option>
-            <option value="watching">Watching</option>
-            <option value="completed">Completed</option>
-            <option value="dropped">Dropped</option>
-          </select>
-        </label>
-      </div>
-
-      <label style={fieldBlockStyle}>
-        <span style={fieldLabelStyle}>Genre</span>
-        <input value={genre} onChange={(event) => setGenre(event.target.value)} style={fieldInputStyle} />
-      </label>
-
-      <label style={fieldBlockStyle}>
-        <span style={fieldLabelStyle}>Streaming Service</span>
-        <select value={platform} onChange={(event) => setPlatform(event.target.value as StreamingPlatform | "")} style={fieldInputStyle}>
-          <option value="">Not set</option>
-          {streamingPlatforms.map((item) => (
-            <option key={item} value={item}>
-              {platformLabel(item)}
-            </option>
-          ))}
+        <span style={fieldLabelStyle}>Status</span>
+        <select value={status} onChange={(event) => setStatus(event.target.value as WatchStatus)} style={fieldInputStyle}>
+          <option value="want_to_watch">Want to Watch</option>
+          <option value="watching">Watching</option>
+          <option value="watched">Watched</option>
         </select>
+      </label>
+
+      <label style={fieldBlockStyle}>
+        <span style={fieldLabelStyle}>Rating (0.5 to 5.0)</span>
+        <input value={rating} onChange={(event) => setRating(event.target.value)} inputMode="decimal" style={fieldInputStyle} />
       </label>
 
       <label style={fieldBlockStyle}>
@@ -364,26 +419,16 @@ function FallbackEditor({
       <div style={{ display: "grid", gap: "8px" }}>
         <button
           type="button"
-          disabled={saving || !title.trim()}
+          disabled={saving}
           onClick={async () => {
             setSaving(true);
             try {
+              const parsedRating = Number(rating);
               await onSubmit({
-                title: title.trim(),
-                type,
                 status,
-                genre: genre.trim(),
-                platform: platform || undefined,
-                totalSeasons: type === "series" ? entry.totalSeasons : undefined,
-                season: type === "series" ? entry.season : undefined,
-                episode: type === "series" ? entry.episode : undefined,
-                isFavorite: Boolean(entry.isFavorite),
-                isRecommended: Boolean(entry.isRecommended),
-                rating: entry.rating,
-                review: entry.review,
+                rating: rating.trim() && Number.isFinite(parsedRating) ? parsedRating : undefined,
                 notes: notes.trim() || undefined,
-                seriesLength: type === "series" ? entry.seriesLength : undefined,
-                lastWatchedAt: entry.lastWatchedAt
+                tags: entry.tags
               });
             } finally {
               setSaving(false);
@@ -428,23 +473,24 @@ const fieldBlockStyle: CSSProperties = {
 
 const fieldLabelStyle: CSSProperties = {
   color: "var(--text-strong)",
-  fontSize: "0.83rem",
+  fontSize: "0.78rem",
   fontWeight: 600
 };
 
 const fieldInputStyle: CSSProperties = {
   width: "100%",
-  padding: "12px",
-  borderRadius: "12px",
+  padding: "9px",
+  borderRadius: "10px",
   border: "1px solid var(--input-border)",
   background: "var(--input-bg)",
-  color: "var(--fg)"
+  color: "var(--fg)",
+  fontSize: "0.88rem"
 };
 
 const primaryActionStyle: CSSProperties = {
   borderRadius: "999px",
   border: "none",
-  padding: "12px",
+  padding: "10px",
   background: "var(--accent)",
   color: "var(--text-inverse)",
   fontWeight: 700
@@ -453,7 +499,7 @@ const primaryActionStyle: CSSProperties = {
 const secondaryActionStyle: CSSProperties = {
   borderRadius: "10px",
   border: "1px solid var(--input-border)",
-  padding: "10px",
+  padding: "9px",
   background: "var(--input-bg)",
   color: "var(--fg)",
   fontWeight: 650,

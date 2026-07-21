@@ -1,35 +1,65 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AvailableOn } from "../../components/AvailableOn";
+import { MediaLogo } from "../../components/icons";
+import { SegmentedControl } from "../../components/SegmentedControl";
+import { getRegion } from "../../lib/region";
+import { getWatchProviders, type WatchProviders } from "../../lib/tmdb";
 import { useWatchStore } from "../../store/useWatchStore";
-import type { TonightStatusFilter } from "../../types/watch";
+import type { WatchType } from "../../types/watch";
 
 export function TonightPickScreen() {
   const navigate = useNavigate();
   const entries = useWatchStore((state) => state.entries);
-  const tonight = useWatchStore((state) => state.tonight);
-  const tonightFilter = useWatchStore((state) => state.tonightFilter);
-  const setTonightFilter = useWatchStore((state) => state.setTonightFilter);
-  const rerollTonight = useWatchStore((state) => state.rerollTonight);
+  const shufflePick = useWatchStore((state) => state.shufflePick);
+  const shuffleReasoning = useWatchStore((state) => state.shuffleReasoning);
+  const randomFilter = useWatchStore((state) => state.randomFilter);
+  const setRandomFilter = useWatchStore((state) => state.setRandomFilter);
+  const rerollShuffle = useWatchStore((state) => state.rerollShuffle);
+
+  const [providers, setProviders] = useState<WatchProviders | undefined>(undefined);
+  const [providersLoading, setProvidersLoading] = useState(false);
 
   const genreOptions = useMemo(() => {
     const genres = new Set<string>();
     for (const entry of entries) {
-      if (entry.genre?.trim()) {
-        genres.add(entry.genre.trim());
+      for (const genre of entry.genres) {
+        if (genre.trim()) genres.add(genre.trim());
       }
     }
     return Array.from(genres).sort((a, b) => a.localeCompare(b));
   }, [entries]);
 
-  useEffect(() => {
-    if (!tonight) {
-      rerollTonight();
-    }
-  }, [tonight, rerollTonight]);
+  const singleGenre = randomFilter.genres[0] ?? "";
 
   useEffect(() => {
-    rerollTonight();
-  }, [tonightFilter.type, tonightFilter.genre, tonightFilter.status, rerollTonight]);
+    if (!shufflePick) {
+      rerollShuffle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof shufflePick?.tmdbId !== "number") {
+      setProviders(undefined);
+      return;
+    }
+    let cancelled = false;
+    setProvidersLoading(true);
+    getWatchProviders(shufflePick.tmdbId, shufflePick.type, getRegion())
+      .then((result) => {
+        if (!cancelled) setProviders(result);
+      })
+      .catch(() => {
+        if (!cancelled) setProviders(undefined);
+      })
+      .finally(() => {
+        if (!cancelled) setProvidersLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shufflePick?.tmdbId, shufflePick?.type]);
 
   function goBack() {
     if (window.history.length > 1) {
@@ -39,146 +69,96 @@ export function TonightPickScreen() {
     navigate("/");
   }
 
+  function onTypeChange(type: WatchType | "both") {
+    setRandomFilter({ type });
+    rerollShuffle();
+  }
+
+  function onGenreChange(genre: string) {
+    setRandomFilter({ genres: genre ? [genre] : [] });
+    rerollShuffle();
+  }
+
   return (
     <main>
       <section className="screen-header">
-        <button
-          type="button"
-          aria-label="Close tonight pick"
-          onClick={goBack}
-          style={{ width: "32px", height: "32px", borderRadius: "999px", border: "1px solid rgba(14,22,38,0.18)", background: "transparent", color: "var(--muted)" }}
-        >
+        <button type="button" aria-label="Close shuffle" onClick={goBack} className="icon-btn">
           ✕
         </button>
         <div style={{ flex: 1, minWidth: 0, marginLeft: "12px" }}>
-          <h1 className="screen-title">Tonight&apos;s Pick</h1>
-          <p style={{ color: "var(--muted)" }}>Let&apos;s find something to watch</p>
+          <h1 className="screen-title">Shuffle</h1>
+          <p style={{ color: "var(--muted)", fontSize: "0.82rem" }}>A random pick from your watchlist</p>
         </div>
       </section>
 
-      <section className="card" style={{ padding: "10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "8px", alignItems: "center" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
-            <button
-              type="button"
-              onClick={() => setTonightFilter({ type: undefined })}
-              style={{
-                border: "1px solid var(--input-border)",
-                borderRadius: "10px",
-                background: !tonightFilter.type ? "var(--accent)" : "var(--input-bg)",
-                color: !tonightFilter.type ? "var(--text-inverse)" : "var(--muted)",
-                padding: "10px",
-                fontWeight: 650,
-                cursor: "pointer"
-              }}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setTonightFilter({ type: "movie" })}
-              style={{
-                border: "1px solid var(--input-border)",
-                borderRadius: "10px",
-                background: tonightFilter.type === "movie" ? "var(--accent)" : "var(--input-bg)",
-                color: tonightFilter.type === "movie" ? "var(--text-inverse)" : "var(--muted)",
-                padding: "10px",
-                fontWeight: 650,
-                cursor: "pointer"
-              }}
-            >
-              Film
-            </button>
-            <button
-              type="button"
-              onClick={() => setTonightFilter({ type: "series" })}
-              style={{
-                border: "1px solid var(--input-border)",
-                borderRadius: "10px",
-                background: tonightFilter.type === "series" ? "var(--accent)" : "var(--input-bg)",
-                color: tonightFilter.type === "series" ? "var(--text-inverse)" : "var(--muted)",
-                padding: "10px",
-                fontWeight: 650,
-                cursor: "pointer"
-              }}
-            >
-              TV
-            </button>
-          </div>
+      <section className="card" style={{ padding: "10px", display: "grid", gap: "10px" }}>
+        <SegmentedControl
+          ariaLabel="Filter by type"
+          value={randomFilter.type}
+          onChange={onTypeChange}
+          options={[
+            { value: "both", label: "All" },
+            { value: "movie", label: "Film" },
+            { value: "tv", label: "TV" }
+          ]}
+        />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            <select
-              value={tonightFilter.genre ?? ""}
-              onChange={(event) => setTonightFilter({ genre: event.target.value || undefined })}
-              style={{
-                width: "100%",
-                minWidth: 0,
-                border: "1px solid var(--input-border)",
-                borderRadius: "10px",
-                background: "var(--input-bg)",
-                color: "var(--fg)",
-                padding: "10px"
-              }}
-            >
-              <option value="">All Genres</option>
-              {genreOptions.map((genre) => (
-                <option key={genre} value={genre}>
-                  {genre}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={tonightFilter.status ?? ""}
-              onChange={(event) =>
-                setTonightFilter({
-                  status: event.target.value ? (event.target.value as TonightStatusFilter) : undefined
-                })
-              }
-              style={{
-                width: "100%",
-                minWidth: 0,
-                border: "1px solid var(--input-border)",
-                borderRadius: "10px",
-                background: "var(--input-bg)",
-                color: "var(--fg)",
-                padding: "10px"
-              }}
-            >
-              <option value="">Default (Not watched + Watching)</option>
-              <option value="not_watched">Not Watched</option>
-              <option value="watching">Watching</option>
-              <option value="watched">Watched</option>
-              <option value="dropped">Dropped</option>
-              <option value="recommended">Recommended</option>
-              <option value="favourite">Favourite</option>
-            </select>
-          </div>
-        </div>
+        <select value={singleGenre} onChange={(event) => onGenreChange(event.target.value)} className="soft-input">
+          <option value="">All Genres</option>
+          {genreOptions.map((genre) => (
+            <option key={genre} value={genre}>
+              {genre}
+            </option>
+          ))}
+        </select>
       </section>
 
-      <section className="card" style={{ borderColor: "rgba(255, 159, 10, 0.45)", background: "linear-gradient(180deg, rgba(255, 159, 10, 0.16), var(--bg-panel))" }}>
-        {tonight ? (
-          <div style={{ textAlign: "center", display: "grid", gap: "14px" }}>
-            <p style={{ color: "var(--muted)" }}>Your pick is...</p>
-            <h2 style={{ fontSize: "1.9rem", lineHeight: 1.15, overflowWrap: "anywhere" }}>{tonight.title}</h2>
-            <p style={{ color: "var(--muted)", textTransform: "capitalize" }}>{tonight.type}</p>
-            <Link
-              to={`/library/${tonight.id}`}
-              style={{ borderRadius: "999px", background: "var(--accent-secondary)", color: "#14100b", padding: "12px", fontWeight: 700, overflowWrap: "anywhere" }}
-            >
+      <section className="card" style={{ display: "grid", gap: "9px", borderColor: "color-mix(in srgb, var(--accent-secondary) 40%, var(--card-border))", background: "linear-gradient(180deg, color-mix(in srgb, var(--accent-secondary) 14%, transparent), var(--bg-panel))" }}>
+        {shufflePick ? (
+          <>
+            <div style={{ display: "grid", placeItems: "center", textAlign: "center", gap: "6px" }}>
+              {shufflePick.posterUrl ? (
+                <img src={shufflePick.posterUrl} alt="" style={{ width: "100px", borderRadius: "var(--radius-m)", boxShadow: "var(--shadow)" }} />
+              ) : (
+                <MediaLogo type={shufflePick.type} size="large" tone="purple" />
+              )}
+              <h2 style={{ fontSize: "1.15rem", lineHeight: 1.2, overflowWrap: "anywhere" }}>{shufflePick.title}</h2>
+              <p style={{ color: "var(--muted)", fontSize: "0.84rem" }}>
+                {shufflePick.type === "tv" ? "TV Series" : "Movie"}
+                {shufflePick.year ? ` • ${shufflePick.year}` : ""}
+                {shufflePick.runtimeMinutes ? ` • ${shufflePick.runtimeMinutes}m` : ""}
+              </p>
+              {shufflePick.genres.length ? (
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", justifyContent: "center" }}>
+                  {shufflePick.genres.slice(0, 4).map((genre) => (
+                    <span key={genre} className="chip">
+                      {genre}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {shuffleReasoning?.basedOnTitles.length ? (
+              <p style={{ color: "var(--muted)", fontSize: "0.8rem", textAlign: "center" }}>
+                Because you loved <span style={{ color: "var(--accent-secondary)", fontWeight: 650 }}>{shuffleReasoning.basedOnTitles.join(" • ")}</span>
+                {typeof shuffleReasoning.predictedRating === "number" ? ` — predicted rating ★ ${shuffleReasoning.predictedRating.toFixed(1)}` : ""}
+              </p>
+            ) : null}
+
+            {shufflePick.synopsis ? <p style={{ color: "var(--muted)", fontSize: "0.8rem", lineHeight: 1.4 }}>{shufflePick.synopsis}</p> : null}
+
+            <AvailableOn providers={providers} loading={providersLoading} limit={5} />
+
+            <Link to={`/library/${shufflePick.id}`} className="btn btn-primary btn-block">
               View Details
             </Link>
-            <button
-              type="button"
-              onClick={rerollTonight}
-              style={{ borderRadius: "999px", border: "1px solid rgba(14,22,38,0.18)", background: "transparent", color: "var(--fg)", padding: "12px", fontWeight: 650 }}
-            >
+            <button type="button" onClick={rerollShuffle} className="btn btn-ghost btn-block">
               Pick Again
             </button>
-          </div>
+          </>
         ) : (
-          <p style={{ color: "var(--muted)" }}>Add more titles to your watchlist and try again.</p>
+          <p style={{ color: "var(--muted)", textAlign: "center" }}>Add titles to your want-to-watch list to get a pick.</p>
         )}
       </section>
     </main>
