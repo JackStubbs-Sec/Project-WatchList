@@ -48,10 +48,14 @@ a {
   -webkit-tap-highlight-color: rgba(108, 92, 231, 0.22);
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 button {
   min-height: 38px;
   cursor: pointer;
-  touch-action: manipulation;
 }
 
 button:active {
