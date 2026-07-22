@@ -64,6 +64,19 @@ export function ShuffleLogo() {
   );
 }
 
+export function HeartIcon({ filled, size = 16 }: { filled: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? "#f25769" : "none"} aria-hidden="true">
+      <path
+        d="M12 20.3s-7.6-4.6-10.1-9.4C0.4 7.7 2.1 4.1 5.7 3.3c2-.4 4 .4 5.2 2.1.4.5.7 1 1.1 1 .4 0 .7-.5 1.1-1 1.2-1.7 3.2-2.5 5.2-2.1 3.6.8 5.3 4.4 3.6 7.6-2.5 4.8-10 9.4-10 9.4z"
+        stroke="#f25769"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function TvGlyph({ size, stroke }: { size: number; stroke: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">

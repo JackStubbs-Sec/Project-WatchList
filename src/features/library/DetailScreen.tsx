@@ -4,7 +4,7 @@ import { AvailableOn } from "../../components/AvailableOn";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { EntryEditor } from "../../components/EntryEditor";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
-import { MediaLogo } from "../../components/icons";
+import { HeartIcon, MediaLogo } from "../../components/icons";
 import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
@@ -212,7 +212,9 @@ export function DetailScreen() {
               <p style={{ color: "var(--muted)", fontSize: "0.74rem", marginTop: "4px" }}>Your Rating</p>
             </Link>
             <button type="button" onClick={() => void onToggleFavorite()} className="card" style={{ padding: "8px", textAlign: "center", border: "1px solid var(--card-border)" }}>
-              <p style={{ fontSize: "0.95rem" }}>❤</p>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <HeartIcon filled={isFavorite(entry)} size={17} />
+              </div>
               <p style={{ color: isFavorite(entry) ? "#f25769" : "var(--muted)", fontSize: "0.74rem", marginTop: "4px" }}>Favourite</p>
             </button>
             <button type="button" onClick={() => void onToggleRecommended()} className="card" style={{ padding: "8px", textAlign: "center", border: "1px solid var(--card-border)" }}>

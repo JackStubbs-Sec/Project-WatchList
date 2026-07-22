@@ -5,9 +5,9 @@ import { MediaLogo } from "../../components/icons";
 import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import { isJustReleased } from "../../lib/justReleased";
 import { getRegion } from "../../lib/region";
-import { getTmdbSimilar, getTmdbTitleDetail, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
+import { getTmdbSeasonEpisodes, getTmdbSimilar, getTmdbTitleDetail, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
 import { useWatchStore } from "../../store/useWatchStore";
-import type { TmdbSearchItem, TmdbTitleDetail, WatchStatus, WatchType } from "../../types/watch";
+import type { TmdbEpisode, TmdbSearchItem, TmdbTitleDetail, WatchStatus, WatchType } from "../../types/watch";
 
 export function DiscoverDetailScreen() {
   const { mediaType, tmdbId } = useParams<{ mediaType: string; tmdbId: string }>();
@@ -27,6 +27,9 @@ export function DiscoverDetailScreen() {
   const [similar, setSimilar] = useState<TmdbSearchItem[]>([]);
   const [providers, setProviders] = useState<WatchProviders | undefined>(undefined);
   const [providersLoading, setProvidersLoading] = useState(false);
+  const [expandedSeason, setExpandedSeason] = useState<number | undefined>(undefined);
+  const [episodesBySeason, setEpisodesBySeason] = useState<Record<number, TmdbEpisode[]>>({});
+  const [episodesLoadingSeason, setEpisodesLoadingSeason] = useState<number | undefined>(undefined);
 
   const [status, setStatus] = useState<WatchStatus>("want_to_watch");
   const [rating, setRating] = useState("");
@@ -59,6 +62,8 @@ export function DiscoverDetailScreen() {
     let cancelled = false;
     setLoading(true);
     setError(undefined);
+    setExpandedSeason(undefined);
+    setEpisodesBySeason({});
 
     getTmdbTitleDetail(parsedTmdbId, parsedMediaType)
       .then((result) => {
@@ -106,6 +111,23 @@ export function DiscoverDetailScreen() {
 
   function toggleList(listId: string) {
     setListIds((current) => (current.includes(listId) ? current.filter((id) => id !== listId) : [...current, listId]));
+  }
+
+  async function onToggleSeason(seasonNumber: number) {
+    if (expandedSeason === seasonNumber) {
+      setExpandedSeason(undefined);
+      return;
+    }
+    setExpandedSeason(seasonNumber);
+    if (episodesBySeason[seasonNumber] || !detail) return;
+
+    setEpisodesLoadingSeason(seasonNumber);
+    try {
+      const episodes = await getTmdbSeasonEpisodes(detail.tmdbId, seasonNumber);
+      setEpisodesBySeason((current) => ({ ...current, [seasonNumber]: episodes }));
+    } finally {
+      setEpisodesLoadingSeason(undefined);
+    }
   }
 
   async function onAdd() {
@@ -199,6 +221,54 @@ export function DiscoverDetailScreen() {
         <AvailableOn providers={providers} loading={providersLoading} fallbackNetworks={detail.networks} mediaType={detail.mediaType} />
       </section>
 
+      {detail.mediaType === "tv" && detail.seasons?.length ? (
+        <section className="stack">
+          <h2 className="section-title" style={{ marginBottom: 0 }}>Episodes</h2>
+          <div style={{ display: "grid", gap: "8px" }}>
+            {detail.seasons.map((season) => {
+              const expanded = expandedSeason === season.seasonNumber;
+              const episodes = episodesBySeason[season.seasonNumber];
+              return (
+                <div key={season.seasonNumber} className="card" style={{ padding: "0", overflow: "hidden" }}>
+                  <button type="button" onClick={() => void onToggleSeason(season.seasonNumber)} style={seasonHeaderButtonStyle}>
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: "0.88rem" }}>{season.name}</p>
+                      <p style={{ color: "var(--muted)", fontSize: "0.76rem" }}>{season.episodeCount} episodes</p>
+                    </div>
+                    <span style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{expanded ? "▴" : "▾"}</span>
+                  </button>
+
+                  {expanded ? (
+                    <div style={{ borderTop: "1px solid var(--divider)", padding: "8px 12px 12px" }}>
+                      {episodesLoadingSeason === season.seasonNumber ? (
+                        <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Loading episodes...</p>
+                      ) : episodes ? (
+                        <div style={{ display: "grid", gap: "4px" }}>
+                          {episodes.map((episode) => (
+                            <div
+                              key={episode.episodeNumber}
+                              style={{ display: "flex", alignItems: "baseline", gap: "8px", padding: "6px 0", borderBottom: "1px solid var(--divider)" }}
+                            >
+                              <span style={{ color: "var(--muted)", fontSize: "0.74rem", width: "28px", flexShrink: 0 }}>E{episode.episodeNumber}</span>
+                              <span style={{ fontSize: "0.8rem", flex: 1 }}>{episode.name}</span>
+                              {episode.airDate ? (
+                                <span style={{ color: "var(--muted)", fontSize: "0.68rem", flexShrink: 0 }}>{formatShortDate(episode.airDate)}</span>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Couldn&apos;t load episode list.</p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {similar.length ? (
         <section className="stack">
           <h2 className="section-title" style={{ marginBottom: 0 }}>More like this</h2>
@@ -276,6 +346,12 @@ export function DiscoverDetailScreen() {
   );
 }
 
+function formatShortDate(isoDate: string) {
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function InfoRow({ label, value, divider, multiline }: { label: string; value: string; divider?: boolean; multiline?: boolean }) {
   return (
     <div style={{ padding: "10px 12px", borderBottom: divider ? "1px solid var(--divider)" : "none", fontSize: "0.86rem" }}>
@@ -286,6 +362,19 @@ function InfoRow({ label, value, divider, multiline }: { label: string; value: s
     </div>
   );
 }
+
+const seasonHeaderButtonStyle: CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  color: "var(--fg)",
+  padding: "11px 12px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  textAlign: "left",
+  minHeight: "unset"
+};
 
 const fieldLabelStyle: CSSProperties = {
   color: "var(--text-strong)",

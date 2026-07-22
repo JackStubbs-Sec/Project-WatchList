@@ -12,6 +12,7 @@ import { LibraryScreen } from "../features/library/LibraryScreen";
 import { ReviewScreen } from "../features/library/ReviewScreen";
 import { ListDetailScreen } from "../features/lists/ListDetailScreen";
 import { ListsScreen } from "../features/lists/ListsScreen";
+import { NotificationsScreen } from "../features/notifications/NotificationsScreen";
 import { ProfileScreen } from "../features/profile/ProfileScreen";
 import { useWatchStore } from "../store/useWatchStore";
 
@@ -68,12 +69,13 @@ function CrashScreen({ error }: { error: unknown }) {
 
 export function App() {
   const load = useWatchStore((state) => state.load);
+  const loadNotifications = useWatchStore((state) => state.loadNotifications);
   const theme = useWatchStore((state) => state.theme);
   const location = useLocation();
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load().then(() => void loadNotifications());
+  }, [load, loadNotifications]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -94,6 +96,7 @@ export function App() {
           <Route path="/lists" element={<ListsScreen />} />
           <Route path="/lists/:listId" element={<ListDetailScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/notifications" element={<NotificationsScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ErrorBoundary>

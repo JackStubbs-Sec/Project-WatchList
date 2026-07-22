@@ -1,5 +1,5 @@
 import { getStoredTmdbApiKey } from "./tmdbKey";
-import type { NetworkInfo, TmdbEpisode, TmdbSearchItem, TmdbTitleDetail, WatchType } from "../types/watch";
+import type { NetworkInfo, SeasonSummary, TmdbEpisode, TmdbSearchItem, TmdbTitleDetail, WatchType } from "../types/watch";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
@@ -84,6 +84,25 @@ export async function searchTmdb(query: string): Promise<TmdbSearchItem[]> {
     .filter(Boolean) as TmdbSearchItem[];
 }
 
+function parseSeasons(rawSeasons: unknown): SeasonSummary[] | undefined {
+  return Array.isArray(rawSeasons)
+    ? rawSeasons
+        .filter((row: any) => typeof row?.season_number === "number" && typeof row?.episode_count === "number" && row.episode_count > 0)
+        .map((row: any) => ({
+          seasonNumber: row.season_number,
+          episodeCount: row.episode_count,
+          name: typeof row.name === "string" ? row.name : `Season ${row.season_number}`
+        }))
+        .sort((a: SeasonSummary, b: SeasonSummary) => a.seasonNumber - b.seasonNumber)
+    : undefined;
+}
+
+/** Lightweight fetch of just a TV show's season list, skipping the credits call getTmdbTitleDetail makes. */
+export async function getTmdbSeasonSummaries(tmdbId: number): Promise<SeasonSummary[]> {
+  const detail = await tmdbFetch<any>(`/tv/${tmdbId}`);
+  return parseSeasons(detail.seasons) ?? [];
+}
+
 export async function getTmdbTitleDetail(tmdbId: number, mediaType: WatchType): Promise<TmdbTitleDetail> {
   const [detail, credits] = await Promise.all([
     tmdbFetch<any>(`/${mediaType}/${tmdbId}`),
@@ -118,16 +137,7 @@ export async function getTmdbTitleDetail(tmdbId: number, mediaType: WatchType): 
     runtimeMinutes: typeof detail.runtime === "number" ? detail.runtime : undefined,
     episodeLengthMinutes: Array.isArray(detail.episode_run_time) && typeof detail.episode_run_time[0] === "number" ? detail.episode_run_time[0] : undefined,
     totalEpisodes: typeof detail.number_of_episodes === "number" ? detail.number_of_episodes : undefined,
-    seasons: Array.isArray(detail.seasons)
-      ? detail.seasons
-          .filter((row: any) => typeof row?.season_number === "number" && typeof row?.episode_count === "number" && row.episode_count > 0)
-          .map((row: any) => ({
-            seasonNumber: row.season_number,
-            episodeCount: row.episode_count,
-            name: typeof row.name === "string" ? row.name : `Season ${row.season_number}`
-          }))
-          .sort((a: { seasonNumber: number }, b: { seasonNumber: number }) => a.seasonNumber - b.seasonNumber)
-      : undefined,
+    seasons: parseSeasons(detail.seasons),
     cast,
     directorOrCreator,
     networks: Array.isArray(detail.networks)

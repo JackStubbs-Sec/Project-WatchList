@@ -1,5 +1,13 @@
 import { create } from "zustand";
 import { entryRepository, type EntryUpsertInput } from "../data/entryRepository";
+import {
+  acknowledgeSeasons,
+  checkForNewSeasons,
+  getCachedNotifications,
+  setCachedNotifications,
+  shouldRecheckNotifications,
+  type NewSeasonNotification
+} from "../lib/notifications";
 import { getDiscoveryPick, pickFromWatchlist } from "../lib/recommendation";
 import { getRegion } from "../lib/region";
 import type {
@@ -39,8 +47,11 @@ interface WatchStore {
   recentShuffleIds: string[];
   randomFilter: RandomFilter;
   theme: AppTheme;
+  notifications: NewSeasonNotification[];
   load: () => Promise<void>;
   loadCustomLists: () => Promise<void>;
+  loadNotifications: () => Promise<void>;
+  acknowledgeNotifications: () => void;
   upsertEntry: (input: EntryUpsertInput) => Promise<string>;
   updateEntry: (id: string, patch: Partial<EntryRecord>) => Promise<void>;
   removeEntry: (id: string) => Promise<void>;
@@ -77,6 +88,7 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
   recentShuffleIds: [],
   randomFilter: defaultFilter,
   theme: getInitialTheme(),
+  notifications: getCachedNotifications(),
 
   async load() {
     const entries = await entryRepository.list();
@@ -86,6 +98,23 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
   async loadCustomLists() {
     const customLists = await entryRepository.listCustomLists();
     set({ customLists });
+  },
+
+  async loadNotifications() {
+    if (!shouldRecheckNotifications()) return;
+    try {
+      const notifications = await checkForNewSeasons(get().entries);
+      set({ notifications });
+    } catch {
+      // Keep whatever was cached; a failed background check shouldn't clear existing notifications.
+    }
+  },
+
+  acknowledgeNotifications() {
+    const { notifications } = get();
+    acknowledgeSeasons(notifications);
+    setCachedNotifications([]);
+    set({ notifications: [] });
   },
 
   async upsertEntry(input) {
@@ -122,6 +151,7 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
 
   async clearLibrary() {
     await entryRepository.clear();
+    setCachedNotifications([]);
     set({
       entries: [],
       customLists: [],
@@ -130,7 +160,8 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
       recentSuggestionKeys: [],
       shufflePick: undefined,
       shuffleReasoning: undefined,
-      recentShuffleIds: []
+      recentShuffleIds: [],
+      notifications: []
     });
   },
 

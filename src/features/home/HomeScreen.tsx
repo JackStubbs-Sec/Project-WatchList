@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWatchStore } from "../../store/useWatchStore";
 import { AvailableOn } from "../../components/AvailableOn";
-import { MediaLogo } from "../../components/icons";
+import { HeartIcon, MediaLogo } from "../../components/icons";
 import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import { isFavorite, withTag } from "../../lib/entryTags";
 import { isJustReleased } from "../../lib/justReleased";
@@ -46,6 +46,7 @@ export function HomeScreen() {
   const tonightLoading = useWatchStore((state) => state.tonightLoading);
   const tonightError = useWatchStore((state) => state.tonightError);
   const rerollTonight = useWatchStore((state) => state.rerollTonight);
+  const notifications = useWatchStore((state) => state.notifications);
 
   const [profileName] = useState(getProfileName());
   const [tonightProviders, setTonightProviders] = useState<WatchProviders | undefined>(undefined);
@@ -103,10 +104,10 @@ export function HomeScreen() {
           <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Here&apos;s what&apos;s happening in your world</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={bellStyle} aria-hidden="true">
+          <Link to="/notifications" style={bellStyle} aria-label={notifications.length ? `${notifications.length} new season notifications` : "Notifications"}>
             🔔
-            <span style={notificationDotStyle} />
-          </span>
+            {notifications.length ? <span style={notificationDotStyle} /> : null}
+          </Link>
           <Link to="/profile" style={avatarStyle}>
             {getInitials(profileName)}
           </Link>
@@ -283,7 +284,7 @@ export function HomeScreen() {
                     <MediaLogo type={entry.type} size="medium" tone={entry.type === "tv" ? "purple" : "red"} />
                   )}
                   <button type="button" onClick={(event) => void onToggleFavorite(entry, event)} style={heartButtonStyle} aria-label="Toggle favourite">
-                    {isFavorite(entry) ? "❤" : "♡"}
+                    <HeartIcon filled={isFavorite(entry)} size={13} />
                   </button>
                 </div>
                 <p style={recentlyAddedTitleStyle}>{entry.title}</p>
