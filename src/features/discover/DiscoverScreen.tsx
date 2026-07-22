@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import { JustReleasedBadge } from "../../components/JustReleasedBadge";
+import { isJustReleased } from "../../lib/justReleased";
 import { getTmdbTrending, searchTmdb } from "../../lib/tmdb";
 import { useWatchStore } from "../../store/useWatchStore";
 import type { TmdbSearchItem, WatchType } from "../../types/watch";
@@ -118,6 +120,11 @@ export function DiscoverScreen() {
                   ) : (
                     <span style={{ color: "var(--muted)", fontSize: "0.75rem" }}>No image</span>
                   )}
+                  {isJustReleased(item.releaseDate) ? (
+                    <div style={{ position: "absolute", top: "6px", left: "6px" }}>
+                      <JustReleasedBadge compact />
+                    </div>
+                  ) : null}
                   {alreadyAdded ? <span style={inLibraryBadgeStyle}>In library</span> : null}
                 </div>
                 <p style={resultTitleStyle}>{item.title}</p>

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AvailableOn } from "../../components/AvailableOn";
 import { MediaLogo } from "../../components/icons";
+import { JustReleasedBadge } from "../../components/JustReleasedBadge";
+import { isJustReleased } from "../../lib/justReleased";
 import { getRegion } from "../../lib/region";
 import { getTmdbSimilar, getTmdbTitleDetail, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
 import { useWatchStore } from "../../store/useWatchStore";
@@ -178,6 +180,7 @@ export function DiscoverDetailScreen() {
           {detail.mediaType === "movie" ? "Movie" : "TV Series"}
           {detail.year ? ` • ${detail.year}` : ""}
         </p>
+        {isJustReleased(detail.releaseDate) ? <JustReleasedBadge /> : null}
         {detail.genres.length ? <p style={{ color: "var(--muted)", fontSize: "0.86rem" }}>{detail.genres.join(", ")}</p> : null}
       </section>
 
@@ -193,7 +196,7 @@ export function DiscoverDetailScreen() {
 
       <section className="stack">
         <h2 className="section-title" style={{ marginBottom: 0 }}>Available on</h2>
-        <AvailableOn providers={providers} loading={providersLoading} />
+        <AvailableOn providers={providers} loading={providersLoading} fallbackNetworks={detail.networks} mediaType={detail.mediaType} />
       </section>
 
       {similar.length ? (

@@ -4,6 +4,7 @@ import type {
   CustomListRecord,
   EntryRecord,
   EpisodeProgressRecord,
+  NetworkInfo,
   RandomFilter,
   SeasonSummary,
   TitleRecord,
@@ -20,6 +21,7 @@ export interface EntryUpsertInput {
     mediaType: "movie" | "tv";
     title: string;
     year?: number;
+    releaseDate?: string;
     posterUrl?: string;
     genres?: string[];
     synopsis?: string;
@@ -29,6 +31,7 @@ export interface EntryUpsertInput {
     seasons?: SeasonSummary[];
     cast?: string[];
     directorOrCreator?: string;
+    networks?: NetworkInfo[];
   };
   status: EntryRecord["status"];
   rating?: number;
@@ -105,6 +108,7 @@ async function composeEntries(): Promise<WatchEntry[]> {
         type: title.mediaType,
         status: entry.status,
         year: title.year,
+        releaseDate: title.releaseDate,
         posterUrl: title.posterUrl,
         genres: title.genres,
         synopsis: title.synopsis,
@@ -114,6 +118,7 @@ async function composeEntries(): Promise<WatchEntry[]> {
         seasons: title.seasons,
         cast: title.cast,
         directorOrCreator: title.directorOrCreator,
+        networks: title.networks,
         rating: entry.rating,
         notes: entry.notes,
         tags: entry.tags ?? [],
@@ -146,6 +151,7 @@ export const entryRepository = {
       mediaType: input.title.mediaType,
       title: input.title.title,
       year: input.title.year,
+      releaseDate: input.title.releaseDate,
       posterUrl: input.title.posterUrl,
       genres: input.title.genres ?? [],
       synopsis: input.title.synopsis,
@@ -155,6 +161,7 @@ export const entryRepository = {
       seasons: input.title.seasons,
       cast: input.title.cast ?? [],
       directorOrCreator: input.title.directorOrCreator,
+      networks: input.title.networks,
       createdAt: existingTitle?.createdAt ?? now,
       updatedAt: now
     };

@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useWatchStore } from "../../store/useWatchStore";
 import { AvailableOn } from "../../components/AvailableOn";
 import { MediaLogo } from "../../components/icons";
+import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import { isFavorite, withTag } from "../../lib/entryTags";
+import { isJustReleased } from "../../lib/justReleased";
 import { getInitials, getProfileName } from "../../lib/profile";
 import { getRegion } from "../../lib/region";
-import { getTmdbTitleDetail, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
+import { getWatchProviders, type WatchProviders } from "../../lib/tmdb";
 import type { WatchEntry } from "../../types/watch";
 
 function greetingByHour(date: Date) {
@@ -39,7 +41,6 @@ export function HomeScreen() {
   const navigate = useNavigate();
   const entries = useWatchStore((state) => state.entries);
   const updateEntry = useWatchStore((state) => state.updateEntry);
-  const upsertEntry = useWatchStore((state) => state.upsertEntry);
   const tonight = useWatchStore((state) => state.tonight);
   const tonightReasoning = useWatchStore((state) => state.tonightReasoning);
   const tonightLoading = useWatchStore((state) => state.tonightLoading);
@@ -49,8 +50,6 @@ export function HomeScreen() {
   const [profileName] = useState(getProfileName());
   const [tonightProviders, setTonightProviders] = useState<WatchProviders | undefined>(undefined);
   const [tonightProvidersLoading, setTonightProvidersLoading] = useState(false);
-  const [addingToWatchlist, setAddingToWatchlist] = useState(false);
-  const [addError, setAddError] = useState<string | undefined>(undefined);
 
   const now = new Date();
   const greeting = greetingByHour(now);
@@ -94,28 +93,6 @@ export function HomeScreen() {
 
   function handleReroll() {
     void rerollTonight();
-  }
-
-  async function onAddToWatchlist() {
-    if (!tonight) return;
-
-    const existing = entries.find((entry) => entry.tmdbId === tonight.tmdbId && entry.type === tonight.mediaType);
-    if (existing) {
-      navigate(`/library/${existing.id}`);
-      return;
-    }
-
-    setAddingToWatchlist(true);
-    setAddError(undefined);
-    try {
-      const detail = await getTmdbTitleDetail(tonight.tmdbId, tonight.mediaType);
-      const entryId = await upsertEntry({ title: detail, status: "want_to_watch" });
-      navigate(`/library/${entryId}`);
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Couldn't add this to your watchlist.");
-    } finally {
-      setAddingToWatchlist(false);
-    }
   }
 
   return (
@@ -227,6 +204,11 @@ export function HomeScreen() {
                   {tonight.runtimeMinutes ? ` • ${tonight.runtimeMinutes}m` : ""}
                   {tonight.mediaType === "tv" ? " • TV Series" : ""}
                 </p>
+                {isJustReleased(tonight.releaseDate) ? (
+                  <div style={{ marginTop: "4px" }}>
+                    <JustReleasedBadge compact />
+                  </div>
+                ) : null}
                 {tonight.genres.length ? (
                   <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", marginTop: "7px" }}>
                     {tonight.genres.slice(0, 3).map((genre) => (
@@ -260,19 +242,21 @@ export function HomeScreen() {
               </p>
             ) : null}
 
-            {addError ? <p style={{ color: "var(--danger)", fontSize: "0.78rem" }}>{addError}</p> : null}
-
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "8px" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <AvailableOn providers={tonightProviders} loading={tonightProvidersLoading} compact limit={3} />
+                <AvailableOn providers={tonightProviders} loading={tonightProvidersLoading} compact limit={3} mediaType={tonight.mediaType} />
               </div>
               <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                 <button type="button" onClick={handleReroll} disabled={tonightLoading} aria-label="Reroll" className="icon-btn">
                   ↻
                 </button>
-                <button type="button" onClick={() => void onAddToWatchlist()} disabled={addingToWatchlist} className="btn btn-primary" style={{ fontSize: "0.82rem", padding: "9px 14px" }}>
-                  {addingToWatchlist ? "Adding..." : "+ Add"}
-                </button>
+                <Link
+                  to={`/discover/${tonight.mediaType}/${tonight.tmdbId}`}
+                  className="btn btn-primary"
+                  style={{ fontSize: "0.82rem", padding: "9px 14px" }}
+                >
+                  Details
+                </Link>
               </div>
             </div>
           </div>

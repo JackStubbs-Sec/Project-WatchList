@@ -5,9 +5,11 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { EntryEditor } from "../../components/EntryEditor";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { MediaLogo } from "../../components/icons";
+import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import type { EntryEditorValue } from "../../components/EntryEditor";
 import { useWatchStore } from "../../store/useWatchStore";
 import { isFavorite, isRecommended, withTag } from "../../lib/entryTags";
+import { isJustReleased } from "../../lib/justReleased";
 import { getRegion } from "../../lib/region";
 import { getTmdbSimilar, getWatchProviders, type WatchProviders } from "../../lib/tmdb";
 import type { TmdbSearchItem, WatchEntry, WatchStatus } from "../../types/watch";
@@ -200,6 +202,7 @@ export function DetailScreen() {
               {entry.type === "movie" ? "Movie" : "TV Series"}
               {entry.year ? ` • ${entry.year}` : ""}
             </p>
+            {isJustReleased(entry.releaseDate) ? <JustReleasedBadge /> : null}
             {entry.genres.length ? <p style={{ color: "var(--muted)", fontSize: "0.86rem" }}>{entry.genres.join(", ")}</p> : null}
           </section>
 
@@ -241,7 +244,7 @@ export function DetailScreen() {
           {typeof entry.tmdbId === "number" ? (
             <section className="stack">
               <h2 className="section-title" style={{ marginBottom: 0 }}>Available on</h2>
-              <AvailableOn providers={providers} loading={providersLoading} />
+              <AvailableOn providers={providers} loading={providersLoading} fallbackNetworks={entry.networks} mediaType={entry.type} />
             </section>
           ) : null}
 

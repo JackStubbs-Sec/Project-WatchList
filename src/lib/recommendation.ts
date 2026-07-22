@@ -164,6 +164,7 @@ export async function getDiscoveryPick(
     mediaType: detail.mediaType,
     title: detail.title,
     year: detail.year,
+    releaseDate: detail.releaseDate,
     posterUrl: detail.posterUrl,
     synopsis: detail.synopsis,
     genres: detail.genres,

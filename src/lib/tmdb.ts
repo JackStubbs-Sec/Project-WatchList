@@ -1,5 +1,5 @@
 import { getStoredTmdbApiKey } from "./tmdbKey";
-import type { TmdbEpisode, TmdbSearchItem, TmdbTitleDetail, WatchType } from "../types/watch";
+import type { NetworkInfo, TmdbEpisode, TmdbSearchItem, TmdbTitleDetail, WatchType } from "../types/watch";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
@@ -75,6 +75,7 @@ export async function searchTmdb(query: string): Promise<TmdbSearchItem[]> {
         mediaType,
         title: label,
         year: parseYear(row.release_date ?? row.first_air_date),
+        releaseDate: row.release_date || row.first_air_date || undefined,
         posterUrl: buildPosterUrl(row.poster_path),
         synopsis: row.overview || undefined,
         genreIds: row.genre_ids ?? []
@@ -108,6 +109,7 @@ export async function getTmdbTitleDetail(tmdbId: number, mediaType: WatchType): 
     mediaType,
     title: detail.title ?? detail.name,
     year: parseYear(detail.release_date ?? detail.first_air_date),
+    releaseDate: detail.release_date || detail.first_air_date || undefined,
     posterUrl: buildPosterUrl(detail.poster_path),
     genres: Array.isArray(detail.genres)
       ? detail.genres.map((row: any) => row?.name).filter((value: unknown): value is string => typeof value === "string")
@@ -127,7 +129,12 @@ export async function getTmdbTitleDetail(tmdbId: number, mediaType: WatchType): 
           .sort((a: { seasonNumber: number }, b: { seasonNumber: number }) => a.seasonNumber - b.seasonNumber)
       : undefined,
     cast,
-    directorOrCreator
+    directorOrCreator,
+    networks: Array.isArray(detail.networks)
+      ? detail.networks
+          .map((row: any): NetworkInfo | undefined => (typeof row?.name === "string" ? { name: row.name } : undefined))
+          .filter((row: NetworkInfo | undefined): row is NetworkInfo => Boolean(row))
+      : undefined
   };
 }
 
@@ -147,6 +154,7 @@ export async function getTmdbSimilar(tmdbId: number, mediaType: WatchType): Prom
     mediaType,
     title: row.title ?? row.name ?? "Untitled",
     year: parseYear(row.release_date ?? row.first_air_date),
+    releaseDate: row.release_date || row.first_air_date || undefined,
     posterUrl: buildPosterUrl(row.poster_path),
     synopsis: row.overview || undefined,
     genreIds: row.genre_ids ?? []
@@ -160,6 +168,7 @@ export async function getTmdbTrending(mediaType: WatchType, timeWindow: "day" | 
     mediaType,
     title: row.title ?? row.name ?? "Untitled",
     year: parseYear(row.release_date ?? row.first_air_date),
+    releaseDate: row.release_date || row.first_air_date || undefined,
     posterUrl: buildPosterUrl(row.poster_path),
     synopsis: row.overview || undefined,
     genreIds: row.genre_ids ?? []
@@ -208,6 +217,8 @@ export interface WatchProviders {
   flatrate: WatchProviderOption[];
   rent: WatchProviderOption[];
   buy: WatchProviderOption[];
+  /** False when TMDB/JustWatch has no provider data for this title in ANY region yet (e.g. a brand-new release), as opposed to data existing but simply not covering the requested region. */
+  indexed: boolean;
 }
 
 function toProviderOptions(rows: TmdbWatchProviderResponseItem[] | undefined): WatchProviderOption[] {
@@ -221,17 +232,19 @@ function toProviderOptions(rows: TmdbWatchProviderResponseItem[] | undefined): W
 
 export async function getWatchProviders(tmdbId: number, mediaType: WatchType, region: string): Promise<WatchProviders> {
   const data = await tmdbFetch<TmdbWatchProvidersResponse>(`/${mediaType}/${tmdbId}/watch/providers`);
+  const indexed = Boolean(data.results && Object.keys(data.results).length > 0);
   const regionData = data.results?.[region];
 
   if (!regionData) {
-    return { link: undefined, flatrate: [], rent: [], buy: [] };
+    return { link: undefined, flatrate: [], rent: [], buy: [], indexed };
   }
 
   return {
     link: regionData.link,
     flatrate: toProviderOptions(regionData.flatrate),
     rent: toProviderOptions(regionData.rent),
-    buy: toProviderOptions(regionData.buy)
+    buy: toProviderOptions(regionData.buy),
+    indexed
   };
 }
 

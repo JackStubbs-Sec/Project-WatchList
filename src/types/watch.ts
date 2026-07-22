@@ -8,12 +8,17 @@ export interface SeasonSummary {
   name: string;
 }
 
+export interface NetworkInfo {
+  name: string;
+}
+
 export interface TitleRecord {
   id: string;
   tmdbId?: number;
   mediaType: WatchType;
   title: string;
   year?: number;
+  releaseDate?: string;
   posterUrl?: string;
   genres: string[];
   synopsis?: string;
@@ -23,6 +28,7 @@ export interface TitleRecord {
   seasons?: SeasonSummary[];
   cast: string[];
   directorOrCreator?: string;
+  networks?: NetworkInfo[];
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +84,7 @@ export interface WatchEntry {
   type: WatchType;
   status: WatchStatus;
   year?: number;
+  releaseDate?: string;
   posterUrl?: string;
   genres: string[];
   synopsis?: string;
@@ -87,6 +94,7 @@ export interface WatchEntry {
   seasons?: SeasonSummary[];
   cast: string[];
   directorOrCreator?: string;
+  networks?: NetworkInfo[];
   rating?: number;
   notes?: string;
   tags: string[];
@@ -140,6 +148,7 @@ export interface TmdbSearchItem {
   mediaType: WatchType;
   title: string;
   year?: number;
+  releaseDate?: string;
   posterUrl?: string;
   synopsis?: string;
   genreIds: number[];
@@ -156,6 +165,7 @@ export interface DiscoveryPick {
   mediaType: WatchType;
   title: string;
   year?: number;
+  releaseDate?: string;
   posterUrl?: string;
   synopsis?: string;
   genres: string[];
@@ -167,6 +177,7 @@ export interface TmdbTitleDetail {
   mediaType: WatchType;
   title: string;
   year?: number;
+  releaseDate?: string;
   posterUrl?: string;
   genres: string[];
   synopsis?: string;
@@ -176,4 +187,5 @@ export interface TmdbTitleDetail {
   seasons?: SeasonSummary[];
   cast: string[];
   directorOrCreator?: string;
+  networks?: NetworkInfo[];
 }

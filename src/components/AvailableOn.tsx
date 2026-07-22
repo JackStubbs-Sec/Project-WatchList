@@ -1,6 +1,8 @@
-import { useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { baseName, getSubscribedProviders, isSubscribedToProvider } from "../lib/subscriptions";
-import type { WatchProviderOption, WatchProviders } from "../lib/tmdb";
+import { getRegion } from "../lib/region";
+import { getWatchProviderCatalog, type WatchProviderOption, type WatchProviders } from "../lib/tmdb";
+import type { NetworkInfo, WatchType } from "../types/watch";
 
 interface CombinedProvider {
   providerId: number;
@@ -49,24 +51,76 @@ export function AvailableOn({
   providers,
   loading,
   compact = false,
-  limit
+  limit,
+  fallbackNetworks,
+  mediaType
 }: {
   providers: WatchProviders | undefined;
   loading: boolean;
   compact?: boolean;
   limit?: number;
+  fallbackNetworks?: NetworkInfo[];
+  mediaType?: WatchType;
 }) {
   const subscriptions = useMemo(() => getSubscribedProviders(), []);
   const size = compact ? 24 : 32;
   const badgeSize = compact ? 12 : 14;
 
+  const combined = providers ? combineProviders(providers, subscriptions) : [];
+  const needsFallback = !loading && !combined.length && Boolean(providers) && !providers?.indexed && Boolean(fallbackNetworks?.length) && Boolean(mediaType);
+
+  const [catalogLogos, setCatalogLogos] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!needsFallback || !mediaType) return;
+    let cancelled = false;
+    getWatchProviderCatalog(mediaType, getRegion())
+      .then((catalog) => {
+        if (cancelled) return;
+        const map = new Map<string, string>();
+        for (const entry of catalog) {
+          if (entry.logoUrl && !map.has(baseName(entry.providerName))) {
+            map.set(baseName(entry.providerName), entry.logoUrl);
+          }
+        }
+        setCatalogLogos(map);
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogLogos(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFallback, mediaType]);
+
   if (loading) {
     return <p style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Checking availability...</p>;
   }
 
-  const combined = providers ? combineProviders(providers, subscriptions) : [];
-
   if (!combined.length) {
+    if (needsFallback && fallbackNetworks) {
+      return (
+        <div style={{ display: "grid", gap: "5px" }}>
+          <p style={{ color: "var(--muted)", fontSize: compact ? "0.66rem" : "0.74rem" }}>
+            Not yet listed by streaming trackers — likely too new. Originally airs on:
+          </p>
+          <div style={{ display: "flex", gap: compact ? "5px" : "8px", flexWrap: "wrap", alignItems: "center" }}>
+            {fallbackNetworks.map((network) => {
+              const logoUrl = catalogLogos.get(baseName(network.name));
+              return (
+                <div key={network.name} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="" style={{ width: `${size}px`, height: `${size}px`, borderRadius: compact ? "8px" : "10px" }} />
+                  ) : null}
+                  <span style={{ fontSize: compact ? "0.7rem" : "0.78rem" }}>{network.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     return <p style={{ color: "var(--muted)", fontSize: "0.74rem" }}>Not currently available to stream in your region.</p>;
   }
 
