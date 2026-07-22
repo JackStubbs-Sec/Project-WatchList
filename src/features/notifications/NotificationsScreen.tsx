@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MediaLogo } from "../../components/icons";
 import { useWatchStore } from "../../store/useWatchStore";
@@ -8,12 +8,9 @@ export function NotificationsScreen() {
   const notifications = useWatchStore((state) => state.notifications);
   const acknowledgeNotifications = useWatchStore((state) => state.acknowledgeNotifications);
 
-  const [displayList] = useState(notifications);
-
   useEffect(() => {
-    if (notifications.length) acknowledgeNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    acknowledgeNotifications();
+  }, [acknowledgeNotifications]);
 
   function goBack() {
     if (window.history.length > 1) {
@@ -33,9 +30,9 @@ export function NotificationsScreen() {
         <span style={{ width: "34px" }} />
       </section>
 
-      {displayList.length ? (
+      {notifications.length ? (
         <section className="stack">
-          {displayList.map((notification) => (
+          {notifications.map((notification) => (
             <Link key={`${notification.tmdbId}-${notification.newSeasonNumber}`} to={`/library/${notification.entryId}`} className="card" style={cardStyle}>
               <div style={posterWrapStyle}>
                 {notification.posterUrl ? (
@@ -49,6 +46,9 @@ export function NotificationsScreen() {
                 <p style={{ color: "var(--accent)", fontSize: "0.8rem", fontWeight: 650, marginTop: "2px" }}>
                   Season {notification.newSeasonNumber} is now available
                 </p>
+                {notification.requeued ? (
+                  <p style={{ color: "var(--muted)", fontSize: "0.72rem", marginTop: "2px" }}>Moved back to Want to Watch</p>
+                ) : null}
               </div>
             </Link>
           ))}

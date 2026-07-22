@@ -12,6 +12,8 @@ export interface NewSeasonNotification {
   title: string;
   posterUrl?: string;
   newSeasonNumber: number;
+  /** True when this entry was "watched" and got moved back to "want_to_watch" as a result of this new season. */
+  requeued: boolean;
 }
 
 function getAcknowledgedMap(): Record<number, number> {
@@ -38,6 +40,16 @@ export function acknowledgeSeasons(notifications: NewSeasonNotification[]): void
     map[notification.tmdbId] = Math.max(map[notification.tmdbId] ?? 0, notification.newSeasonNumber);
   }
   setAcknowledgedMap(map);
+}
+
+export function isNotificationAcknowledged(notification: NewSeasonNotification): boolean {
+  const map = getAcknowledgedMap();
+  return (map[notification.tmdbId] ?? -1) >= notification.newSeasonNumber;
+}
+
+/** Notifications the user hasn't acknowledged yet — drives the bell dot. Safe to call on every render (reads localStorage, no side effects). */
+export function filterUnseen(notifications: NewSeasonNotification[]): NewSeasonNotification[] {
+  return notifications.filter((notification) => !isNotificationAcknowledged(notification));
 }
 
 export function shouldRecheckNotifications(): boolean {
@@ -96,7 +108,14 @@ export async function checkForNewSeasons(entries: WatchEntry[]): Promise<NewSeas
         const baseline = Math.max(watchedMaxSeason(entry) ?? -1, knownMaxSeason(entry) ?? -1, acknowledged[entry.tmdbId] ?? -1);
 
         if (currentMax > baseline) {
-          return { entryId: entry.id, tmdbId: entry.tmdbId, title: entry.title, posterUrl: entry.posterUrl, newSeasonNumber: currentMax };
+          return {
+            entryId: entry.id,
+            tmdbId: entry.tmdbId,
+            title: entry.title,
+            posterUrl: entry.posterUrl,
+            newSeasonNumber: currentMax,
+            requeued: entry.status === "watched"
+          };
         }
         return undefined;
       } catch {

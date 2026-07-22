@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AvailableOn } from "../../components/AvailableOn";
 import { MediaLogo } from "../../components/icons";
 import { JustReleasedBadge } from "../../components/JustReleasedBadge";
@@ -51,6 +51,21 @@ export function DiscoverDetailScreen() {
       navigate(`/library/${existingEntryId}`, { replace: true });
     }
   }, [existingEntryId, navigate]);
+
+  const existingByTmdbId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of entries) {
+      if (typeof entry.tmdbId === "number") {
+        map.set(`${entry.type}-${entry.tmdbId}`, entry.id);
+      }
+    }
+    return map;
+  }, [entries]);
+
+  function linkForSimilar(item: TmdbSearchItem): string {
+    const existingId = existingByTmdbId.get(`${item.mediaType}-${item.tmdbId}`);
+    return existingId ? `/library/${existingId}` : `/discover/${item.mediaType}/${item.tmdbId}`;
+  }
 
   useEffect(() => {
     if (!parsedMediaType || !Number.isFinite(parsedTmdbId)) {
@@ -274,14 +289,18 @@ export function DiscoverDetailScreen() {
           <h2 className="section-title" style={{ marginBottom: 0 }}>More like this</h2>
           <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "2px" }}>
             {similar.slice(0, 8).map((item) => (
-              <div key={`${item.mediaType}-${item.tmdbId}`} style={{ flex: "0 0 76px", display: "grid", gap: "4px" }}>
+              <Link key={`${item.mediaType}-${item.tmdbId}`} to={linkForSimilar(item)} style={{ flex: "0 0 76px", display: "grid", gap: "4px" }}>
                 <div style={{ width: "76px", height: "114px", borderRadius: "8px", overflow: "hidden", background: "var(--input-bg)" }}>
                   {item.posterUrl ? <img src={item.posterUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
                 </div>
                 <p style={{ fontSize: "0.7rem", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                   {item.title}
                 </p>
-              </div>
+                <p style={{ color: "var(--muted)", fontSize: "0.62rem" }}>
+                  {item.mediaType === "tv" ? "TV" : "Film"}
+                  {item.year ? ` • ${item.year}` : ""}
+                </p>
+              </Link>
             ))}
           </div>
         </section>

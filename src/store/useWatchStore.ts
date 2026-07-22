@@ -104,6 +104,11 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
     if (!shouldRecheckNotifications()) return;
     try {
       const notifications = await checkForNewSeasons(get().entries);
+      const toRequeue = notifications.filter((notification) => notification.requeued);
+      if (toRequeue.length) {
+        await Promise.all(toRequeue.map((notification) => entryRepository.updateEntry(notification.entryId, { status: "want_to_watch" })));
+        await get().load();
+      }
       set({ notifications });
     } catch {
       // Keep whatever was cached; a failed background check shouldn't clear existing notifications.
@@ -111,10 +116,7 @@ export const useWatchStore = create<WatchStore>((set, get) => ({
   },
 
   acknowledgeNotifications() {
-    const { notifications } = get();
-    acknowledgeSeasons(notifications);
-    setCachedNotifications([]);
-    set({ notifications: [] });
+    acknowledgeSeasons(get().notifications);
   },
 
   async upsertEntry(input) {

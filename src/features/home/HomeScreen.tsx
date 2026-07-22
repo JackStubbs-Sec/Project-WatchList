@@ -6,6 +6,7 @@ import { HeartIcon, MediaLogo } from "../../components/icons";
 import { JustReleasedBadge } from "../../components/JustReleasedBadge";
 import { isFavorite, withTag } from "../../lib/entryTags";
 import { isJustReleased } from "../../lib/justReleased";
+import { filterUnseen } from "../../lib/notifications";
 import { getInitials, getProfileName } from "../../lib/profile";
 import { getRegion } from "../../lib/region";
 import { getWatchProviders, type WatchProviders } from "../../lib/tmdb";
@@ -47,6 +48,7 @@ export function HomeScreen() {
   const tonightError = useWatchStore((state) => state.tonightError);
   const rerollTonight = useWatchStore((state) => state.rerollTonight);
   const notifications = useWatchStore((state) => state.notifications);
+  const unseenNotifications = filterUnseen(notifications);
 
   const [profileName] = useState(getProfileName());
   const [tonightProviders, setTonightProviders] = useState<WatchProviders | undefined>(undefined);
@@ -104,9 +106,9 @@ export function HomeScreen() {
           <p style={{ color: "var(--muted)", fontSize: "0.8rem" }}>Here&apos;s what&apos;s happening in your world</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Link to="/notifications" style={bellStyle} aria-label={notifications.length ? `${notifications.length} new season notifications` : "Notifications"}>
+          <Link to="/notifications" style={bellStyle} aria-label={unseenNotifications.length ? `${unseenNotifications.length} new season notifications` : "Notifications"}>
             🔔
-            {notifications.length ? <span style={notificationDotStyle} /> : null}
+            {unseenNotifications.length ? <span style={notificationDotStyle} /> : null}
           </Link>
           <Link to="/profile" style={avatarStyle}>
             {getInitials(profileName)}
